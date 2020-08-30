@@ -226,12 +226,12 @@ void write_init_script() {
     const char *script_block = "#\n# This script was generated on %s\n#\n\n"
         "MULTIHOME=%s\n"
         "if [ -x $MULTIHOME ]; then\n"
-        "    multihome.old=$HOME\n"
+        "    HOME_OLD=$HOME\n"
         "    # Drop environment\n"
         "    env -i\n"
         "    # Redeclare HOME\n"
         "    HOME=$($MULTIHOME)\n"
-        "    if [ \"$HOME\" != \"$multihome.old\" ]; then\n"
+        "    if [ \"$HOME\" != \"$HOME_OLD\" ]; then\n"
         "        cd $HOME\n"
         "    fi\n"
         "fi\n";
@@ -255,7 +255,7 @@ void write_init_script() {
     time(&now);
     tm = localtime(&now);
     sprintf(date, "%02d-%02d-%d @ %02d:%02d:%02d",
-            tm->tm_mon, tm->tm_mday, tm->tm_year + 1900,
+            tm->tm_mon + 1, tm->tm_mday, tm->tm_year + 1900,
             tm->tm_hour, tm->tm_min, tm->tm_sec);
 
     fprintf(fp, script_block, date, buf);
