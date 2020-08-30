@@ -16,6 +16,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <libgen.h>
+#include <wait.h>
+#include <argp.h>
+#include <time.h>
 
 #define VERSION "0.0.1"
 #define OS_SKEL_DIR "/etc/skel/"  // NOTE: Trailing slash is required
