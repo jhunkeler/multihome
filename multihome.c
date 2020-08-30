@@ -358,6 +358,7 @@ void user_transfer() {
                 break;
         }
     }
+    fclose(fp);
 }
 
 // begin argp setup
