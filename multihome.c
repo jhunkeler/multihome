@@ -1,6 +1,3 @@
-#include <wait.h>
-#include <argp.h>
-#include <time.h>
 #include "multihome.h"
 
 /**
