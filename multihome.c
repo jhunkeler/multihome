@@ -267,14 +267,12 @@ void write_init_script() {
  */
 void user_transfer() {
     FILE *fp;
-    char config[PATH_MAX];
     char rec[PATH_MAX];
     size_t lineno;
 
-    sprintf(config, "%s/transfer", multihome.config_dir);
     memset(rec, '\0', PATH_MAX);
 
-    fp = fopen(config, "r");
+    fp = fopen(multihome.config_transfer, "r");
     if (fp == NULL) {
         // doesn't exist or isn't readable. non-fatal.
         return;
@@ -315,14 +313,14 @@ void user_transfer() {
 
         // Ignore: bad lines without enough information
         if (strlen(rec) < 3) {
-            fprintf(stderr, "%s:%zu: Invalid format: %s\n", config, lineno, rec);
+            fprintf(stderr, "%s:%zu: Invalid format: %s\n", multihome.config_transfer, lineno, rec);
             continue;
         }
 
         recptr = &rec[2];
 
         if (*recptr == '/') {
-            fprintf(stderr, "%s:%zu: Removing leading '/' from: %s\n", config, lineno, recptr);
+            fprintf(stderr, "%s:%zu: Removing leading '/' from: %s\n", multihome.config_transfer, lineno, recptr);
             memmove(recptr, recptr + 1, strlen(recptr) + 1);
         }
 
@@ -356,7 +354,7 @@ void user_transfer() {
                 }
                 break;
             default:
-                fprintf(stderr, "%s:%zu: Invalid type: %c\n", config, lineno, rec[0]);
+                fprintf(stderr, "%s:%zu: Invalid type: %c\n", multihome.config_transfer, lineno, rec[0]);
                 break;
         }
     }
