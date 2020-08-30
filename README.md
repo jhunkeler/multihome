@@ -114,7 +114,7 @@ if [ -x $MULTIHOME ]; then
 fi
 ```
 
-If Multihome is available drop the current environment, reset the `HOME` variable to point to a new location, and changed the directory to that path. Execution of the environment continues from that point within the original `~/.bash_profile`, so it's important to keep this script as generic as possible.
+If Multihome is available drop the current environment, reset the `HOME` variable to point to a new location, and change the directory to that path. Execution of the environment continues from that point within the original `~/.bash_profile`, so it's important to keep this script as generic as possible.
 
 For example your profile script should look like this:
 ```bash
