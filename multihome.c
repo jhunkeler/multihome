@@ -438,6 +438,13 @@ int main(int argc, char *argv[]) {
     sprintf(multihome.path_topdir, "%s/topdir", multihome.path_new);
     sprintf(multihome.marker, "%s/.multihome_controlled", multihome.path_new);
 
+    // Refuse to operate within a controlled home directory
+    char already_inside[PATH_MAX];
+    sprintf(already_inside, "%s/.multihome_controlled", multihome.path_old);
+    if (access(already_inside, F_OK) == 0) {
+        fprintf(stderr, "error: cannot be nested.\n");
+        return 1;
+    }
 
     // Create new home directory
     if (strcmp(multihome.path_new, multihome.path_old) != 0) {
