@@ -7,6 +7,7 @@ struct {
     char path_new[PATH_MAX];
     char path_old[PATH_MAX];
     char path_topdir[PATH_MAX];
+    char path_root[PATH_MAX];
     char marker[PATH_MAX];
     char entry_point[PATH_MAX];
     char config_dir[PATH_MAX];
@@ -227,8 +228,6 @@ void write_init_script() {
         "MULTIHOME=%s\n"
         "if [ -x $MULTIHOME ]; then\n"
         "    HOME_OLD=$HOME\n"
-        "    # Drop environment\n"
-        "    env -i\n"
         "    # Redeclare HOME\n"
         "    HOME=$($MULTIHOME)\n"
         "    if [ \"$HOME\" != \"$HOME_OLD\" ]; then\n"
@@ -241,23 +240,27 @@ void write_init_script() {
     time_t now;
     FILE *fp;
 
+    // Determine the absolute path of this program
     if (realpath(multihome.entry_point, buf) < 0) {
         perror(multihome.entry_point);
         exit(errno);
     }
 
+    // Open init script for writing
     fp = fopen(multihome.config_init, "w+");
     if (fp == NULL) {
         perror(multihome.config_init);
         exit(errno);
     }
 
+    // Generate header timestamp
     time(&now);
     tm = localtime(&now);
     sprintf(date, "%02d-%02d-%d @ %02d:%02d:%02d",
             tm->tm_mon + 1, tm->tm_mday, tm->tm_year + 1900,
             tm->tm_hour, tm->tm_min, tm->tm_sec);
 
+    // Write init script
     fprintf(fp, script_block, date, buf);
     fclose(fp);
 }
@@ -415,6 +418,12 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
+    // Refuse to operate if RSYNC_BIN is not available
+    if (access(RSYNC_BIN, F_OK) < 0) {
+        fprintf(stderr, "rsync program not found (expecting: %s)\n", RSYNC_ARGS);
+        return 1;
+    }
+
     // Get account name for the effective user
     uid = geteuid();
     if ((user_info = getpwuid(uid)) == NULL) {
@@ -445,10 +454,11 @@ int main(int argc, char *argv[]) {
     // Populate multihome struct
     strcpy(multihome.entry_point, argv[0]);
     strcpy(multihome.path_old, path_old);
+    strcpy(multihome.path_root, MULTIHOME_ROOT);
     sprintf(multihome.config_dir, "%s/.multihome", multihome.path_old);
     sprintf(multihome.config_init, "%s/init", multihome.config_dir);
     sprintf(multihome.config_skeleton, "%s/skel/", multihome.config_dir);
-    sprintf(multihome.path_new, "/home/%s/home_local/%s", user_info->pw_name, host_info.nodename);
+    sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, host_info.nodename);
     sprintf(multihome.path_topdir, "%s/topdir", multihome.path_new);
     sprintf(multihome.marker, "%s/.multihome_controlled", multihome.path_new);
 

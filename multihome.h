@@ -21,6 +21,7 @@
 #include <time.h>
 
 #define VERSION "0.0.1"
+#define MULTIHOME_ROOT "home_local"
 #define OS_SKEL_DIR "/etc/skel/"  // NOTE: Trailing slash is required
 #define RSYNC_BIN "/usr/bin/rsync"
 #define RSYNC_ARGS "-aq"
