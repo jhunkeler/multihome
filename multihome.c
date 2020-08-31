@@ -428,9 +428,23 @@ int main(int argc, char *argv[]) {
         return errno;
     }
 
+    // Determine the user's home directory
+    char *path_old;
+    path_old = getenv("HOME");
+
+    // Handle legitimate case where HOME is undefined. Use the system's records instead...
+    // i.e. The user wiped the environment with `env -i` prior to executing multihome
+    if (path_old == NULL) {
+        path_old = user_info->pw_dir;
+        if (path_old == NULL) {
+            fprintf(stderr, "Unable to determine home directory path\n");
+            return 1;
+        }
+    }
+
     // Populate multihome struct
     strcpy(multihome.entry_point, argv[0]);
-    strcpy(multihome.path_old, getenv("HOME"));
+    strcpy(multihome.path_old, path_old);
     sprintf(multihome.config_dir, "%s/.multihome", multihome.path_old);
     sprintf(multihome.config_init, "%s/init", multihome.config_dir);
     sprintf(multihome.config_skeleton, "%s/skel/", multihome.config_dir);
@@ -442,7 +456,7 @@ int main(int argc, char *argv[]) {
     char already_inside[PATH_MAX];
     sprintf(already_inside, "%s/.multihome_controlled", multihome.path_old);
     if (access(already_inside, F_OK) == 0) {
-        fprintf(stderr, "error: cannot be nested.\n");
+        fprintf(stderr, "error: multihome cannot be nested.\n");
         return 1;
     }
 
@@ -460,7 +474,7 @@ int main(int argc, char *argv[]) {
     // Generate symbolic link within the new home directory pointing back to the real account home directory
     if (access(multihome.path_topdir, F_OK) != 0 ) {
         fprintf(stderr, "Creating symlink to original home directory: %s\n", multihome.path_topdir);
-        if (symlink(multihome.path_new, multihome.path_topdir) < 0) {
+        if (symlink(multihome.path_old, multihome.path_topdir) < 0) {
             perror(multihome.path_topdir);
             return errno;
         }
