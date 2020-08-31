@@ -5,7 +5,7 @@ include(CheckCSourceCompiles)
 
 set(CMAKE_C_STANDARD 99)
 
-include_directories(.)
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 check_symbol_exists(basename "libgen.h" HAVE_BASENAME)
 check_symbol_exists(dirname "libgen.h" HAVE_DIRNAME)
@@ -16,20 +16,20 @@ check_c_source_compiles(
     "
     #include <argp.h>
     int main(int argc, char *argv[]) {
-        struct argp_option option[10];
+        struct argp_option option[1];
     }
     "
     HAVE_ARGP
 )
-if (NOT HAVE_ARGP)
-    message(FATAL_ERROR "Your toolchain does not provide argp")
-endif()
 
-find_program(PROGRAM_RSYNC rsync REQUIRED)
+find_program(RSYNC_BIN
+        NAMES rsync
+        REQUIRED)
+
+configure_file("config.h.in" "config.h" @ONLY)
 
 add_executable(multihome
-        multihome.c
-        multihome.h)
+        multihome.c)
 
 install(TARGETS multihome
         RUNTIME DESTINATION bin)

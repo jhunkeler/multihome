@@ -1,0 +1,1 @@
+#cmakedefine RSYNC_BIN "@RSYNC_BIN@"
