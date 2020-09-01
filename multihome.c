@@ -134,13 +134,21 @@ int mkdirs(char *path) {
     size_t parts_length;
     memset(tmp, '\0', sizeof(tmp));
 
+    int abspath;
+    abspath = path[0] == '/';
     parts = split(path, "/", &parts_length);
 
     for (size_t i = 0; parts[i] != NULL; i++) {
         if (i == 0 && strlen(parts[i]) == 0) {
             continue;
         }
+
+        if (abspath) {
+            strcat(tmp, "/");
+        }
+
         strcat(tmp, parts[i]);
+
         if (tmp[strlen(tmp) - 1] != '/') {
             strcat(tmp, "/");
         }
@@ -537,6 +545,16 @@ int main(int argc, char *argv[]) {
         return errno;
     }
 
+    // Use short hostname
+    char *nodename = host_info.nodename;
+    char *nodename_orig = nodename;
+
+    nodename = strchr(host_info.nodename, '.');
+    if (nodename != NULL) {
+        *nodename = '\0';
+        nodename = nodename_orig;
+    }
+
     // Determine the user's home directory
     char *path_old;
     path_old = getenv("HOME");
@@ -557,8 +575,9 @@ int main(int argc, char *argv[]) {
     strcpy(multihome.path_root, MULTIHOME_ROOT);
     sprintf(multihome.config_dir, "%s/.multihome", multihome.path_old);
     sprintf(multihome.config_init, "%s/init", multihome.config_dir);
+    sprintf(multihome.config_transfer, "%s/transfer", multihome.config_dir);
     sprintf(multihome.config_skeleton, "%s/skel/", multihome.config_dir);
-    sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, host_info.nodename);
+    sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, nodename);
     sprintf(multihome.path_topdir, "%s/topdir", multihome.path_new);
     sprintf(multihome.marker, "%s/.multihome_controlled", multihome.path_new);
 
