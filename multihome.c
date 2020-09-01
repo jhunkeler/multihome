@@ -243,19 +243,28 @@ int shell(char *args[]){
     return WEXITSTATUS(status);
 }
 
+#define COPY_NORMAL 0
+#define COPY_UPDATE 1
 /**
  * Copy files using rsync
  * @param source file or directory
  * @param dest file or directory
  * @return rsync exit code
  */
-int copy(char *source, char *dest) {
+int copy(char *source, char *dest, int mode) {
     if (source == NULL || dest == NULL) {
         fprintf(stderr, "copy failed. source and destination may not be NULL\n");
         exit(1);
     }
 
-    return shell((char *[]){RSYNC_BIN, RSYNC_ARGS, source, dest, NULL});
+    char args[255];
+    memset(args, '\0', sizeof(args));
+    strcat(args, RSYNC_ARGS);
+    if (mode == COPY_UPDATE) {
+        strcat(args, "u");
+    }
+
+    return shell((char *[]){RSYNC_BIN, args, source, dest, NULL});
 }
 
 /**
@@ -333,7 +342,7 @@ void write_init_script() {
 /**
  * Link or copy files from /home/username to /home/username/home_local/nodename
  */
-void user_transfer() {
+void user_transfer(int copy_mode) {
     FILE *fp;
     char rec[PATH_MAX];
     size_t lineno;
@@ -367,6 +376,11 @@ void user_transfer() {
         char dest[PATH_MAX];
 
         recptr = rec;
+
+        // Ignore empty lines
+        if (strlen(recptr)) {
+            continue;
+        }
 
         // Ignore: comments and inline comments
         char *comment;
@@ -417,7 +431,7 @@ void user_transfer() {
                 }
                 break;
             case 'T':
-                if (copy(source, dest) != 0) {
+                if (copy(source, dest, copy_mode) != 0) {
                     fprintf(stderr, "transfer: %s: %s -> %s\n", strerror(errno), source, dest);
                 }
                 break;
@@ -502,6 +516,7 @@ static struct argp_option options[] = {
 #ifdef ENABLE_TESTING
     {"tests", 't', 0, 0, "Run unit tests"},
 #endif
+    {"update", 'u', 0, 0, "Synchronize user skeleton and transfer configuration"},
     {"version", 'V', 0, 0, "Show version and exit"},
     {0},
 };
@@ -511,6 +526,7 @@ struct arguments {
 #ifdef ENABLE_TESTING
     int testing;
 #endif
+    int update;
     int version;
 };
 
@@ -530,6 +546,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
             arguments->testing = 1;
             break;
 #endif
+        case 'u':
+            arguments->update = 1;
+            break;
         case ARGP_KEY_ARG:
             if (state->arg_num > 1) {
                 argp_usage(state);
@@ -545,6 +564,7 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 // end of argp setup
 
 int main(int argc, char *argv[]) {
+    int copy_mode;
     uid_t uid;
     struct passwd *user_info;
     struct utsname host_info;
@@ -554,10 +574,11 @@ int main(int argc, char *argv[]) {
 
     struct arguments arguments;
     arguments.script = 0;
-    arguments.version = 0;
 #ifdef ENABLE_TESTING
     arguments.testing = 0;
 #endif
+    arguments.update = 0;
+    arguments.version = 0;
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     if (arguments.version) {
@@ -627,10 +648,12 @@ int main(int argc, char *argv[]) {
     sprintf(multihome.path_topdir, "%s/topdir", multihome.path_new);
     sprintf(multihome.marker, "%s/.multihome_controlled", multihome.path_new);
 
+    copy_mode = arguments.update; // 0 = normal copy, 1 = update files
+
     // Refuse to operate within a controlled home directory
     char already_inside[PATH_MAX];
     sprintf(already_inside, "%s/.multihome_controlled", multihome.path_old);
-    if (access(already_inside, F_OK) == 0) {
+    if (arguments.update == 0 && access(already_inside, F_OK) == 0) {
         fprintf(stderr, "error: multihome cannot be nested.\n");
         return 1;
     }
@@ -665,18 +688,18 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (access(multihome.marker, F_OK) < 0) {
+    if (arguments.update || access(multihome.marker, F_OK) < 0) {
         // Copy system account defaults
         fprintf(stderr, "Injecting account skeleton: %s\n", OS_SKEL_DIR);
-        copy(OS_SKEL_DIR, multihome.path_new);
+        copy(OS_SKEL_DIR, multihome.path_new, copy_mode);
 
         // Copy user-defined account defaults
         fprintf(stderr, "Injecting user-defined account skeleton: %s\n", multihome.config_skeleton);
-        copy(multihome.config_skeleton, multihome.path_new);
+        copy(multihome.config_skeleton, multihome.path_new, copy_mode);
 
         // Transfer or link user-defined files into the new home
         fprintf(stderr, "Parsing transfer configuration, if present\n");
-        user_transfer();
+        user_transfer(copy_mode);
     }
 
     // Leave our mark: "multihome was here"
