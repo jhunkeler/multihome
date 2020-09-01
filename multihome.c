@@ -378,7 +378,7 @@ void user_transfer(int copy_mode) {
         recptr = rec;
 
         // Ignore empty lines
-        if (strlen(recptr)) {
+        if (strlen(recptr) == 0) {
             continue;
         }
 
