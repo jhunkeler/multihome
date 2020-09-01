@@ -134,17 +134,12 @@ int mkdirs(char *path) {
     size_t parts_length;
     memset(tmp, '\0', sizeof(tmp));
 
-    int abspath;
-    abspath = path[0] == '/';
     parts = split(path, "/", &parts_length);
 
     for (size_t i = 0; parts[i] != NULL; i++) {
         if (i == 0 && strlen(parts[i]) == 0) {
-            continue;
-        }
-
-        if (abspath) {
             strcat(tmp, "/");
+            continue;
         }
 
         strcat(tmp, parts[i]);
