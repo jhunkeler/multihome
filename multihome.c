@@ -255,9 +255,11 @@ void write_init_script() {
     FILE *fp;
 
     // Determine the absolute path of this program
-    if (realpath(multihome.entry_point, buf) < 0) {
-        perror(multihome.entry_point);
-        exit(errno);
+    if (multihome.entry_point[0] != '/') {
+        if (realpath(multihome.entry_point, buf) < 0) {
+            perror(multihome.entry_point);
+            exit(errno);
+        }
     }
 
     // Open init script for writing
