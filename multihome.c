@@ -552,8 +552,8 @@ int main(int argc, char *argv[]) {
     nodename = strchr(host_info.nodename, '.');
     if (nodename != NULL) {
         *nodename = '\0';
-        nodename = nodename_orig;
     }
+    nodename = nodename_orig;
 
     // Determine the user's home directory
     char *path_old;
