@@ -58,7 +58,7 @@ Your home directory is still served over NFS but now under multihome's control, 
 ## Installing
 
 ```
-$ git clone https://github.com/exampleeler/multihome
+$ git clone https://github.com/jhunk/multihome
 $ cd multihome
 $ mkdir build
 $ cd build
@@ -83,44 +83,95 @@ Parsing transfer configuration, if present
 Creating marker file: /home/example/home_local/hostname/.multihome_controlled
 ```
 
-This generates the script, `~/.multihome/init`. To activate Multihome for your account add the following to the top of your `.bash_profile` (or other POSIX-compatible profile scripts):
+Passing the`-s` (`--script`) option generates the initialization script needed to manage your home directories, `~/.multihome/init`, and can be applied by adding the following snippet to the top of your ~/.bash_profile` (or other POSIX-compatible shell initialization scripts):
 
 ```bash
 if [ -f "$HOME/.multihome/init" ]; then
+    # Switch to managed home directory
     . $HOME/.multihome/init
+
+    # Reinitialize the system shell profile
+    [ -f "/etc/profile" ] && . /etc/profile
+
+    # Initialize managed home directory's shell profile
+    [ -f "$HOME/.bash_profile ] && . $HOME/.bash_profile
 fi
 ```
 
-What does the `init` script actually do?
+## Managing data
 
-```bash
-$ cat ~/.multihome/init
-#
-# This script was generated on 08-30-2020 @ 10:26:11
-#
+### With a custom account skeleton
 
-MULTIHOME=/usr/local/bin/multihome
-if [ -x $MULTIHOME ]; then
-    HOME_OLD=$HOME
-    # Drop environment
-    env -i
-    # Redeclare HOME
-    HOME=$($MULTIHOME)
-    if [ "$HOME" != "$HOME_OLD" ]; then
-        cd $HOME
-    fi
-fi
+When `multihome` creates a new home directory it copies the contents of `/etc/skel`, then `$HOME/.multihome/skel`.
+
+```
+$ mkdir -p ~/.multihome/skel
+$ cd ~/.multihome/skel
+$ ln -s /home/example/.vim
+$ ln -s /home/example/.vimrc
 ```
 
-If Multihome is available drop the current environment, reset the `HOME` variable to point to a new location, and change the directory to that path. Execution of the environment continues from that point within the original `~/.bash_profile`, so it's important to keep this script as generic as possible.
+The contents of `~/.multihome/skel` are now:
 
-For example your profile script should look like this:
+```
+$ ls -la
+total 8
+drwxr-xr-x 2 example example 4096 Sep  1 14:18 .
+drwxr-xr-x 3 example example 4096 Aug 30 10:26 ..
+lrwxrwxrwx 1 example example   16 Sep  1 14:18 .vim -> /home/example/.vim
+lrwxrwxrwx 1 example example   18 Sep  1 14:18 .vimrc -> /home/example/.vimrc
+```
+
+When `multihome` initializes a new home directory you will notice your customizations have been incorporated into the base account skeleton:
+
+```
+$ ls -la /home/example/home_local/hostname
+total 60
+drwxr-xr-x   3 example example  4096 Aug 27 23:31 .
+drwxr-xr-x 119 example example 12288 Sep  1 00:42 ..
+-rw-r--r--   1 example example    21 Jul 10 12:57 .bash_logout
+-rw-r--r--   1 example example    57 Jul 10 12:57 .bash_profile
+-rw-r--r--   1 example example  3838 Jul 10 12:57 .bashrc
+drwxr-xr-x  11 example example  4096 Aug 27 23:31 .config
+-rw-r--r--   1 example example  4855 Oct 29  2017 .dir_colors
+-rw-r--r--   1 example example   141 Aug 11 09:04 .profile
+-rw-r--r--   1 example example  3729 Feb  6  2020 .screenrc
+lrwxrwxrwx  1 example example   16 Sep  1 14:18 .vim -> /home/example/.vim
+lrwxrwxrwx  1 example example   18 Sep  1 14:18 .vimrc -> /home/example/.vimrc
+-rwxr-xr-x   1 example example   100 Oct 29  2017 .Xclients
+-rw-r--r--   1 example example  1500 Aug 11 09:04 .xinitrc
+```
+
+### Via transfer configuration
+
+
+To avoid broken shells, errors produced by the `~/.multihome/transfer` configuration are reported on `stderr`, but will not halt the program.
+
+#### Configuration format
+
+```
+# comment (inline comments are OK too)
+TYPE WHERE
+```
+
+#### Types
+
+- `H`: Create a hardlink from `/home/example/WHERE` to `/home/example/home_local/`
+- `L`: Create a symbolic link from `/home/example/WHERE` to `/home/example/home_local/`
+- `T`: Transfer file or directory from `/home/example/WHERE` to `/home/example/home_local/`
+
+#### Example
+
 ```bash
-if [ -f "$HOME/.multihome/init" ]; then
-    . $HOME/.multihome/init
-fi
+$ cat << EOF > ~/.multihome/transfer
+H .Xauthority        # Hardlink to /home/example/.Xauthority file
+L .vim               # Symlink to /home/example/.vim directory
+T .vimrc             # Copy /home/example/.vim directory
+```
 
-if [ -f "$HOME/.bashrc" ]; then
-    . $HOME/.bashrc
-fi
+Transferring directories requires a trailing slash:
+
+```
+# T my_data          # incorrect -> /home/example/home_local/my_data/my_data/
+T my_data/           # correct -> /home/example/home_local/mydata/
 ```
