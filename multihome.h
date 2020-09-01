@@ -5,6 +5,10 @@
 #ifndef MULTIHOME_MULTIHOME_H
 #define MULTIHOME_MULTIHOME_H
 
+#ifdef ENABLE_TESTING
+#include <assert.h>
+#endif
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,5 +29,9 @@
 #define MULTIHOME_ROOT "home_local"
 #define OS_SKEL_DIR "/etc/skel/"  // NOTE: Trailing slash is required
 #define RSYNC_ARGS "-aq"
+
+#define DISABLE_BUFFERING \
+    setvbuf(stdout, NULL, _IONBF, 0); \
+    setvbuf(stderr, NULL, _IONBF, 0);
 
 #endif //MULTIHOME_MULTIHOME_H

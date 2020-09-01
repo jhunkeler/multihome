@@ -1,5 +1,6 @@
 #include "multihome.h"
 
+
 /**
  * Globals
  */
@@ -32,7 +33,6 @@ void free_array(void **arr, size_t nelem) {
         }
     }
     free(arr);
-    arr = NULL;
 }
 
 /**
@@ -140,8 +140,10 @@ int mkdirs(char *path) {
         if (i == 0 && strlen(parts[i]) == 0) {
             continue;
         }
-        strcat(tmp, "/");
         strcat(tmp, parts[i]);
+        if (tmp[strlen(tmp) - 1] != '/') {
+            strcat(tmp, "/");
+        }
 
         if (access(tmp, F_OK) == 0) {
             continue;
@@ -164,29 +166,34 @@ int mkdirs(char *path) {
  */
 int shell(char *args[]){
     pid_t pid;
-    int status;
-    int child_status;
+    pid_t status;
 
     status = 0;
-    child_status = 0;
-    pid = fork();
-    if (pid == 0) {
-        execvp(args[0], &args[0]);
-    } else if (pid < 0) {
-        fprintf(stderr, "failed to execute");
-        exit(1);
-    } else {
-        if ((waitpid(WAIT_MYPGRP, &child_status, 0)) < 0) {
-            perror("wait failed");
-            exit(1);
-        }
+    errno = 0;
 
-        if (WIFEXITED(child_status) || WIFSIGNALED(child_status)) {
-            status = WEXITSTATUS(child_status);
+    pid = fork();
+    if (pid == -1) {
+        fprintf(stderr, "fork failed\n");
+        exit(1);
+    } else if (pid == 0) {
+        int retval;
+        retval = execv(args[0], &args[0]);
+        exit(retval);
+    } else {
+        if (waitpid(pid, &status, WUNTRACED) > 0) {
+            if (WIFEXITED(status) && WEXITSTATUS(status)) {
+                if (WEXITSTATUS(status) == 127) {
+                    fprintf(stderr, "execvp failed\n");
+                    exit(1);
+                }
+            } else if (WIFSIGNALED(status))  {
+                fprintf(stderr, "signal received: %d\n", WIFSIGNALED(status));
+            }
+        } else {
+            fprintf(stderr, "waitpid() failed\n");
         }
     }
-
-    return status;
+    return WEXITSTATUS(status);
 }
 
 /**
@@ -364,11 +371,77 @@ void user_transfer() {
     fclose(fp);
 }
 
+void test_split() {
+    puts("split()");
+    char **result;
+    size_t result_alloc;
+
+    result = split("one two three", " ", &result_alloc);
+    assert(strcmp(result[0], "one") == 0 && strcmp(result[1], "two") == 0 && strcmp(result[2], "three") == 0);
+    assert(result_alloc != 0);
+    free_array((void *)result, result_alloc);
+}
+
+void test_count_substrings() {
+    puts("count_substrings()");
+    size_t result;
+    result = count_substrings("one two three", " ");
+    assert(result == 2);
+}
+
+void test_mkdirs() {
+    puts("mkdirs()");
+    int result;
+    char *input = "this/is/a/test";
+
+    if (access(input, F_OK) == 0) {
+        assert(remove("this/is/a/test") == 0);
+        assert(remove("this/is/a") == 0);
+        assert(remove("this/is") == 0);
+        assert(remove("this") == 0);
+    }
+
+    result = mkdirs(input);
+    assert(result == 0);
+    assert(access(input, F_OK) == 0);
+}
+
+void test_shell() {
+    puts("shell()");
+    assert(shell((char *[]){"/bin/echo", "testing", NULL}) == 0);
+    assert(shell((char *[]){"/bin/date", NULL}) == 0);
+    assert(shell((char *[]){"/bin/unlikelyToExistAnywhere", NULL}) != 0);
+}
+
+void test_touch() {
+    puts("touch()");
+    char *input = "touched_file.txt";
+
+    if (access(input, F_OK) == 0) {
+        remove(input);
+    }
+
+    assert(touch(input) == 0);
+    assert(access(input, F_OK) == 0);
+}
+
+void test_main() {
+    test_count_substrings();
+    test_split();
+    test_mkdirs();
+    test_shell();
+    test_touch();
+    exit(0);
+}
+
 // begin argp setup
 static char doc[] = "Partition a home directory per-host when using a centrally mounted /home";
 static char args_doc[] = "";
 static struct argp_option options[] = {
     {"script", 's', 0, 0, "Generate runtime script"},
+#ifdef ENABLE_TESTING
+    {"tests", 't', 0, 0, "Run unit tests"},
+#endif
     {"version", 'V', 0, 0, "Show version and exit"},
     {0},
 };
@@ -376,6 +449,7 @@ static struct argp_option options[] = {
 struct arguments {
     int script;
     int version;
+    int testing;
 };
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state) {
@@ -388,6 +462,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
             break;
         case 's':
             arguments->script = 1;
+            break;
+        case 't':
+            arguments->testing = 1;
             break;
         case ARGP_KEY_ARG:
             if (state->arg_num > 1) {
@@ -408,9 +485,13 @@ int main(int argc, char *argv[]) {
     struct passwd *user_info;
     struct utsname host_info;
 
+    // Disable line buffering via macro
+    DISABLE_BUFFERING
+
     struct arguments arguments;
     arguments.script = 0;
     arguments.version = 0;
+    arguments.testing = 0;
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     if (arguments.version) {
@@ -424,6 +505,12 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+#ifdef ENABLE_TESTING
+    if (arguments.testing) {
+        test_main();
+        exit(0);
+    }
+#endif
     // Get account name for the effective user
     uid = geteuid();
     if ((user_info = getpwuid(uid)) == NULL) {
@@ -526,3 +613,4 @@ int main(int argc, char *argv[]) {
         printf("%s\n", multihome.path_new);
     }
 }
+
