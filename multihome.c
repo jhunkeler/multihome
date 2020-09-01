@@ -260,6 +260,8 @@ void write_init_script() {
             perror(multihome.entry_point);
             exit(errno);
         }
+    } else {
+        strcpy(buf, multihome.entry_point);
     }
 
     // Open init script for writing
