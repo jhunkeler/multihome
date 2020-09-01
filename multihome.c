@@ -371,6 +371,7 @@ void user_transfer() {
     fclose(fp);
 }
 
+#ifdef ENABLE_TESTING
 void test_split() {
     puts("split()");
     char **result;
@@ -433,6 +434,7 @@ void test_main() {
     test_touch();
     exit(0);
 }
+#endif
 
 // begin argp setup
 static char doc[] = "Partition a home directory per-host when using a centrally mounted /home";
@@ -448,8 +450,10 @@ static struct argp_option options[] = {
 
 struct arguments {
     int script;
-    int version;
+#ifdef ENABLE_TESTING
     int testing;
+#endif
+    int version;
 };
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state) {
@@ -463,9 +467,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
         case 's':
             arguments->script = 1;
             break;
+#ifdef ENABLE_TESTING
         case 't':
             arguments->testing = 1;
             break;
+#endif
         case ARGP_KEY_ARG:
             if (state->arg_num > 1) {
                 argp_usage(state);
@@ -491,7 +497,9 @@ int main(int argc, char *argv[]) {
     struct arguments arguments;
     arguments.script = 0;
     arguments.version = 0;
+#ifdef ENABLE_TESTING
     arguments.testing = 0;
+#endif
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     if (arguments.version) {
@@ -511,6 +519,7 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 #endif
+
     // Get account name for the effective user
     uid = geteuid();
     if ((user_info = getpwuid(uid)) == NULL) {
