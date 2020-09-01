@@ -295,13 +295,17 @@ void write_init_script() {
     char buf[PATH_MAX];
     char date[100];
     char *path;
+    char *entry_point;
     struct tm *tm;
     time_t now;
     FILE *fp;
 
-    path = find_program("multihome");
+    strcpy(buf, multihome.entry_point);
+    entry_point = basename(buf);
+
+    path = find_program(entry_point);
     if (path == NULL) {
-        fprintf(stderr, "multihome not found on $PATH");
+        fprintf(stderr, "%s not found on $PATH\n", buf);
         exit(1);
     }
 
