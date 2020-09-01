@@ -124,6 +124,50 @@ split_die_2:
 }
 
 /**
+ * Using $PATH, return the location of _name
+ *
+ * This function returns local storage
+ *
+ * @param _name program name
+ * @return path, or NULL if not found
+ */
+char *find_program(const char *_name) {
+    static char buf[PATH_MAX];
+    char *pathvar;
+    char **parts;
+    size_t parts_count;
+    int found;
+
+    pathvar = getenv("PATH");
+    if (pathvar == NULL) {
+        return NULL;
+    }
+
+    parts = split(pathvar, ":", &parts_count);
+    if (parts == NULL) {
+        return NULL;
+    }
+
+    memset(buf, '\0', sizeof(buf));
+    found = 0;
+    for (int i = 0; parts[i] != NULL; i++) {
+        char tmp[PATH_MAX];
+        memset(tmp, '\0', sizeof(tmp));
+        strcat(tmp, parts[i]);
+        strcat(tmp, "/");
+        strcat(tmp, _name);
+        if (access(tmp, F_OK) == 0) {
+            found = 1;
+            realpath(tmp, buf);
+            break;
+        }
+    }
+
+    free_array((void**)parts, parts_count);
+    return found ? buf : NULL;
+}
+
+/**
  * Create directories if they do not exist
  * @param path Filesystem path
  * @return int (0=success, -1=error (errno set))
@@ -236,7 +280,7 @@ int touch(char *filename) {
 void write_init_script() {
     const char *script_block = \
         "#\n# This script was generated on %s\n#\n\n"
-        "# Set path to multihome executable to avoid PATH lookups\n"
+        "# Set location of multihome to avoid PATH lookups\n"
         "MULTIHOME=%s\n"
         "if [ -x $MULTIHOME ]; then\n"
         "    # Save HOME\n"
@@ -250,19 +294,18 @@ void write_init_script() {
         "fi\n";
     char buf[PATH_MAX];
     char date[100];
+    char *path;
     struct tm *tm;
     time_t now;
     FILE *fp;
 
-    // Determine the absolute path of this program
-    if (multihome.entry_point[0] != '/') {
-        if (realpath(multihome.entry_point, buf) < 0) {
-            perror(multihome.entry_point);
-            exit(errno);
-        }
-    } else {
-        strcpy(buf, multihome.entry_point);
+    path = find_program("multihome");
+    if (path == NULL) {
+        fprintf(stderr, "multihome not found on $PATH");
+        exit(1);
     }
+
+    strcpy(buf, path);
 
     // Open init script for writing
     fp = fopen(multihome.config_init, "w+");
