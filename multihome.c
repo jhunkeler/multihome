@@ -231,12 +231,16 @@ int touch(char *filename) {
  * Generate multihome initialization script
  */
 void write_init_script() {
-    const char *script_block = "#\n# This script was generated on %s\n#\n\n"
+    const char *script_block = \
+        "#\n# This script was generated on %s\n#\n\n"
+        "# Set path to multihome executable to avoid PATH lookups\n"
         "MULTIHOME=%s\n"
         "if [ -x $MULTIHOME ]; then\n"
+        "    # Save HOME\n"
         "    HOME_OLD=$HOME\n"
         "    # Redeclare HOME\n"
         "    HOME=$($MULTIHOME)\n"
+        "    # Switch to new HOME\n"
         "    if [ \"$HOME\" != \"$HOME_OLD\" ]; then\n"
         "        cd $HOME\n"
         "    fi\n"
