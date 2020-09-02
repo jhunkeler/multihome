@@ -96,7 +96,7 @@ if [ -f "$HOME/.multihome/init" ]; then
     [ -f "/etc/profile" ] && . /etc/profile
 
     # Initialize managed home directory's shell profile
-    [ -f "$HOME/.bash_profile ] && . $HOME/.bash_profile
+    [ -f "$HOME/.bash_profile" ] && . $HOME/.bash_profile
 fi
 ```
 
