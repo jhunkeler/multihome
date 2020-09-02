@@ -184,7 +184,7 @@ Passing the `-u` (`--update`) option copies files from `/etc/skel`, `~/.multihom
 
 ## Known issues / FAQ
 
-* SSH reads its configuration from `/home/example/.ssh` instead of `/home/example/home_local/.ssh`. This is a security feature and is no is no way to override this behavior until you recompile SSH/D from source. As a workaround use a symbolic link to improve quality of life.
+* SSH reads its configuration from `/home/example/.ssh` instead of `/home/example/home_local/.ssh`. This is a security feature and there is no way to override this behavior unless you recompile SSH/D from source. As a workaround use a symbolic link to improve your quality of life. At least `~/.ssh` will exist and point to the right place.
 
     *~/.multihome/transfer*:
 ```
