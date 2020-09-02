@@ -27,8 +27,16 @@
 
 #define VERSION "0.0.1"
 #define MULTIHOME_ROOT "home_local"
-#define OS_SKEL_DIR "/etc/skel/"  // NOTE: Trailing slash is required
+#define MULTIHOME_TOPDIR "topdir"
+#define MULTIHOME_CFGDIR ".multihome"
+#define MULTIHOME_CFG_TRANSFER "transfer"
+#define MULTIHOME_CFG_INIT "init"
+#define MULTIHOME_CFG_SKEL "skel/"  // NOTE: Trailing slash is required
+#define MULTIHOME_MARKER ".multihome_controlled"
+#define OS_SKEL_DIR "/etc/skel/"    // NOTE: Trailing slash is required
 #define RSYNC_ARGS "-aq"
+#define COPY_NORMAL 0
+#define COPY_UPDATE 1
 
 #define DISABLE_BUFFERING \
     setvbuf(stdout, NULL, _IONBF, 0); \
