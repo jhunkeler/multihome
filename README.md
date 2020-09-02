@@ -3,15 +3,17 @@
 NFS mounted home directories are common when operating in a clustered environment and so are the problems that come along with it. Multihome manages your `HOME` environment variable on a per-host basis. When you log into a system, Multihome creates a new home directory using the system's default account skeleton, changes your `HOME` to point to it, then initializes your shell session from there. This allows you, as the user, to maintain unique home directories on any system within the cluster; complete with their own individualized settings.
 
 ## Usage
+
 ```
 Partition a home directory per-host when using a centrally mounted /home
 
   -s, --script               Generate runtime script
+  -u, --update               Synchronize user skeleton and transfer
+                             configuration
   -?, --help                 Give this help list
       --usage                Give a short usage message
   -V, --version              Show version and exit
 ```
-
 
 ## Your cluster
 
@@ -175,3 +177,35 @@ Transferring directories requires a trailing slash:
 # T my_data          # incorrect -> /home/example/home_local/my_data/my_data/
 T my_data/           # correct -> /home/example/home_local/mydata/
 ```
+
+### Synchronizing data
+
+Passing the `-u` (`--update`) option copies files from `/etc/skel`, `~/.multihome/skel`, and processes any directives present in the `~/.multihome/transfer` configuration. The destination file(s) will be replaced if the source file (`/home/example/file`) is newer than the destination file (`/home/example/home_local/file`).
+
+## Known issues / FAQ
+
+* SSH reads its configuration from `/home/example/.ssh` instead of `/home/example/home_local/.ssh`. This is a security feature and is no is no way to override this behavior until you recompile SSH/D from source. As a workaround use a symbolic link to improve quality of life.
+
+    *~/.multihome/transfer*:
+```
+L .ssh
+```
+
+* X11 fails to forward correctly
+
+    *~/.multihome/transfer*:
+```
+H .Xauthority
+``` 
+
+* X11 still fails to forward correctly.
+
+    If you are dropping your environment ensure you carry over your `DISPLAY` variable set by SSH at login. Multihome has nothing to do with this.
+
+* When I login nothing happens!
+
+    If your `/home/your_user/.bashrc` (often called by `~/.bash_profile`) makes a hard-coded reference to `/home/your_user/.bash_profile` the shell will enter an infinite loop. To interrupt this loop hit `ctrl-c` multiple times. Now edit your shell scripts, correct the problem, log out, and log back into the system.
+
+* Support my shell! I use `tcsh`, heretic!
+
+    I have no interest in supporting shells that aren't `sh`-compatible. PRs are welcome, of course.
