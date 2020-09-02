@@ -644,7 +644,14 @@ int main(int argc, char *argv[]) {
     sprintf(multihome.config_init, "%s/init", multihome.config_dir);
     sprintf(multihome.config_transfer, "%s/transfer", multihome.config_dir);
     sprintf(multihome.config_skeleton, "%s/skel/", multihome.config_dir);
-    sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, nodename);
+
+    // Update mode uses the current $HOME, so set .path_new to .path_old
+    if (arguments.update) {
+        strcpy(multihome.path_new, multihome.path_old);
+    } else {  // Construct .path_new normally
+        sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, nodename);
+    }
+
     sprintf(multihome.path_topdir, "%s/topdir", multihome.path_new);
     sprintf(multihome.marker, "%s/.multihome_controlled", multihome.path_new);
 
