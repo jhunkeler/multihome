@@ -1,0 +1,47 @@
+version: 2.1
+
+jobs:
+  build:
+    machine:
+      image: ubuntu-1604:202007-01
+    steps:
+      - checkout
+      - run: cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_C_FLAGS="-DENABLE_TESTING -g" .
+      - run: make
+      - run: ./multihome -t
+      - run: sudo make install
+      - run: multihome -s
+      - run:
+          name: "Runtime test"
+          command: |
+            . ~/.multihome/init
+            . /etc/profile
+            . ~/.profile
+
+            echo "multihome location: $MULTIHOME"
+            echo "Current HOME: $HOME"
+            echo "Previous HOME: $HOME_OLD"
+            echo "Current PATH: $PATH"
+
+            echo "System account structure (/etc/skel):"
+            ls -la /etc/skel
+
+            echo "Current HOME structure:"
+            ls -la ~
+
+            echo "test file" > topdir/.multihome/skel/TESTFILE
+
+            echo "T bin/" > topdir/.multihome/transfer
+            echo "H .gitconfig" >> topdir/.multihome/transfer
+            echo "L .gemrc" >> topdir/.multihome/transfer
+
+            multihome -u
+
+            echo "Updated HOME structure:"
+            ls -la ~
+
+            test -f ~/TESTFILE
+            test -d ~/bin
+            test -f ~/.gitconfig
+            test -L ~/.gemrc
+          
