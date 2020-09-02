@@ -243,8 +243,6 @@ int shell(char *args[]){
     return WEXITSTATUS(status);
 }
 
-#define COPY_NORMAL 0
-#define COPY_UPDATE 1
 /**
  * Copy files using rsync
  * @param source file or directory
@@ -372,10 +370,16 @@ void user_transfer(int copy_mode) {
     lineno = 0;
     while (fgets(rec, PATH_MAX - 1, fp) != NULL) {
         char *recptr;
+        char *field_type;
+        char *field_where;
         char source[PATH_MAX];
         char dest[PATH_MAX];
 
+        // Set pointer to string
         recptr = rec;
+
+        // Set pointer to TYPE field (beginning of string)
+        field_type = recptr;
 
         // Ignore empty lines
         if (strlen(recptr) == 0) {
@@ -399,19 +403,21 @@ void user_transfer(int copy_mode) {
             continue;
         }
 
-        recptr = &rec[2];
+        // Error checking is done
+        // Set pointer to WHERE field
+        field_where = &rec[2];
 
-        if (*recptr == '/') {
-            fprintf(stderr, "%s:%zu: Removing leading '/' from: %s\n", multihome.config_transfer, lineno, recptr);
-            memmove(recptr, recptr + 1, strlen(recptr) + 1);
+        if (*field_where == '/') {
+            fprintf(stderr, "%s:%zu: Removing leading '/' from: %s\n", multihome.config_transfer, lineno, field_where);
+            memmove(field_where, field_where + 1, strlen(field_where) + 1);
         }
 
-        if (recptr[strlen(recptr) - 1] == '\n') {
-            recptr[strlen(recptr) - 1] = '\0';
+        if (field_where[strlen(field_where) - 1] == '\n') {
+            field_where[strlen(field_where) - 1] = '\0';
         }
 
         // construct data source path
-        sprintf(source, "%s/%s", multihome.path_old, recptr);
+        sprintf(source, "%s/%s", multihome.path_old, field_where);
 
         // construct data destination path
         char *tmp;
@@ -419,7 +425,8 @@ void user_transfer(int copy_mode) {
         sprintf(dest, "%s/%s", multihome.path_new, basename(tmp));
         free(tmp);
 
-        switch (rec[0]) {
+        // Perform task based on TYPE field
+        switch (*field_type) {
             case 'L':
                 if (symlink(source, dest) < 0) {
                     fprintf(stderr, "symlink: %s: %s -> %s\n", strerror(errno), source, dest);
@@ -436,7 +443,7 @@ void user_transfer(int copy_mode) {
                 }
                 break;
             default:
-                fprintf(stderr, "%s:%zu: Invalid type: %c\n", multihome.config_transfer, lineno, rec[0]);
+                fprintf(stderr, "%s:%zu: Invalid type: '%c'\n", multihome.config_transfer, lineno, *field_type);
                 break;
         }
     }
@@ -644,19 +651,19 @@ int main(int argc, char *argv[]) {
     strcpy(multihome.entry_point, argv[0]);
     strcpy(multihome.path_old, path_old);
     strcpy(multihome.path_root, MULTIHOME_ROOT);
-    sprintf(multihome.config_dir, "%s/.multihome", multihome.path_old);
-    sprintf(multihome.config_init, "%s/init", multihome.config_dir);
-    sprintf(multihome.config_transfer, "%s/transfer", multihome.config_dir);
-    sprintf(multihome.config_skeleton, "%s/skel/", multihome.config_dir);
+    sprintf(multihome.config_dir, "%s/%s", multihome.path_old, MULTIHOME_CFGDIR);
+    sprintf(multihome.config_init, "%s/%s", multihome.config_dir, MULTIHOME_CFG_INIT);
+    sprintf(multihome.config_transfer, "%s/%s", multihome.config_dir, MULTIHOME_CFG_TRANSFER);
+    sprintf(multihome.config_skeleton, "%s/%s", multihome.config_dir, MULTIHOME_CFG_SKEL);
     sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, nodename);
-    sprintf(multihome.path_topdir, "%s/topdir", multihome.path_new);
-    sprintf(multihome.marker, "%s/.multihome_controlled", multihome.path_new);
+    sprintf(multihome.path_topdir, "%s/%s", multihome.path_new, MULTIHOME_TOPDIR);
+    sprintf(multihome.marker, "%s/%s", multihome.path_new, MULTIHOME_MARKER);
 
     copy_mode = arguments.update; // 0 = normal copy, 1 = update files
 
     // Refuse to operate within a controlled home directory
     char already_inside[PATH_MAX];
-    sprintf(already_inside, "%s/.multihome_controlled", multihome.path_old);
+    sprintf(already_inside, "%s/%s", multihome.path_old, MULTIHOME_MARKER);
     if (arguments.update == 0 && access(already_inside, F_OK) == 0) {
         fprintf(stderr, "error: multihome cannot be nested.\n");
         return 1;
@@ -692,17 +699,27 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // Generate a blank transfer configuration
+    if (access(multihome.config_transfer, F_OK) < 0) {
+        fprintf(stderr, "Creating new transfer configuration: %s\n", multihome.config_transfer);
+        if (touch(multihome.config_transfer) < 0) {
+            perror(multihome.config_transfer);
+            return errno;
+        }
+    }
+
+    // NOTE: update mode skips the home directory marker check
     if (arguments.update || access(multihome.marker, F_OK) < 0) {
         // Copy system account defaults
-        fprintf(stderr, "Injecting account skeleton: %s\n", OS_SKEL_DIR);
+        fprintf(stderr, "Pulling account skeleton: %s\n", OS_SKEL_DIR);
         copy(OS_SKEL_DIR, multihome.path_new, copy_mode);
 
         // Copy user-defined account defaults
-        fprintf(stderr, "Injecting user-defined account skeleton: %s\n", multihome.config_skeleton);
+        fprintf(stderr, "Pulling user-defined account skeleton: %s\n", multihome.config_skeleton);
         copy(multihome.config_skeleton, multihome.path_new, copy_mode);
 
         // Transfer or link user-defined files into the new home
-        fprintf(stderr, "Parsing transfer configuration, if present\n");
+        fprintf(stderr, "Parsing transfer configuration: %s\n", multihome.config_transfer);
         user_transfer(copy_mode);
     }
 
