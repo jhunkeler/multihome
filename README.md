@@ -194,11 +194,16 @@ L .ssh
 ```
 
 * X11 fails to forward correctly
+```
+X11 connection rejected because of wrong authentication.
+xterm: Xt error: Can't open display: x:yy.z
+```
 
     *~/.multihome/transfer*:
 ```
-H .Xauthority
-``` 
+L .Xauthority
+# Note: A hardlink or direct transfer will not work here. The file must be a symlink.
+```
 
 * X11 still fails to forward correctly.
 
