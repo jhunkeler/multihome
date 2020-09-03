@@ -153,7 +153,13 @@ char *find_program(const char *_name) {
     memset(buf, '\0', sizeof(buf));
     found = 0;
 
-    if (strncmp(_name, "./", 2) == 0) {
+    // Return the absolute path of _name when:
+    // 1) Path starts with "./" (absolute)
+    // 2) Path starts with "/" (absolute)
+    // 3) Path contains "/" (relative)
+    //
+    // Obviously strstr will do this job all by itself, however it's like watching slow scan TV.
+    if (strncmp(_name, "./", 2) == 0 || strncmp(_name, "/", 1) == 0 || strstr(_name, "/") != NULL) {
         if (access(_name, F_OK) == 0) {
             found = 1;
             realpath(_name, buf);
@@ -293,6 +299,38 @@ int touch(char *filename) {
 }
 
 /**
+ * Get date and time as a string
+ *
+ * If result is NULL this function will return a pointer to a heap address.
+ * The caller is responsible for freeing memory.
+ *
+ * @param result buffer must be at least 22 bytes, or NULL
+ * @return pointer to buffer containing date and time
+ */
+char *get_timestamp(char **result) {
+    struct tm *tm;
+    time_t now;
+
+    if ((*result) == NULL) {
+        // I doubt anyone use this program ~10,000 years from now
+        (*result) = calloc(strlen("xx-xx-xxxx @ xx:xx:xx") + 1, sizeof(char));
+    }
+
+    // Get current time
+    time(&now);
+
+    // Convert current time to tm struct
+    tm = localtime(&now);
+
+    // Write result to buffer
+    sprintf((*result), "%02d-%02d-%d @ %02d:%02d:%02d",
+            tm->tm_mon + 1, tm->tm_mday, tm->tm_year + 1900,
+            tm->tm_hour, tm->tm_min, tm->tm_sec);
+
+    return (*result);
+}
+
+/**
  * Generate multihome initialization script
  */
 void write_init_script() {
@@ -313,8 +351,6 @@ void write_init_script() {
     char buf[PATH_MAX];
     char date[100];
     char *path;
-    struct tm *tm;
-    time_t now;
     FILE *fp;
 
     // Populate buf with the program's argv[0] record
@@ -338,15 +374,8 @@ void write_init_script() {
         exit(errno);
     }
 
-    // Generate header timestamp
-    time(&now);
-    tm = localtime(&now);
-    sprintf(date, "%02d-%02d-%d @ %02d:%02d:%02d",
-            tm->tm_mon + 1, tm->tm_mday, tm->tm_year + 1900,
-            tm->tm_hour, tm->tm_min, tm->tm_sec);
-
     // Write init script
-    fprintf(fp, script_block, date, buf);
+    fprintf(fp, script_block, get_timestamp((char **) &date), buf);
     fclose(fp);
 }
 
