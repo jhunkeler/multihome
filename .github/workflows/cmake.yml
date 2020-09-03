@@ -73,3 +73,19 @@ jobs:
         echo "Current HOME structure:"
         ls -la $HOME
 
+        set -x
+        mkdir -p topdir/bin
+        touch topdir/.multihome/skel/TESTFILE
+        touch topdir/.gitconfig
+        touch topdir/.gemrc
+
+        echo "T bin/" > topdir/.multihome/transfer
+        echo "H .gitconfig" >> topdir/.multihome/transfer
+        echo "L .gemrc" >> topdir/.multihome/transfer
+
+        $MULTIHOME -u
+        test -L topdir
+        test -d bin
+        test -f TESTFILE
+        test -f .gitconfig
+        test -L .gemrc
