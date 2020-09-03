@@ -313,20 +313,22 @@ void write_init_script() {
     char buf[PATH_MAX];
     char date[100];
     char *path;
-    char *entry_point;
     struct tm *tm;
     time_t now;
     FILE *fp;
 
+    // Populate buf with the program's argv[0] record
     strcpy(buf, multihome.entry_point);
-    entry_point = basename(buf);
 
-    path = find_program(entry_point);
+    // Find the program's system path
+    path = find_program(buf);
     if (path == NULL) {
         fprintf(stderr, "%s not found on $PATH\n", buf);
         exit(1);
     }
 
+    // Clear buf and store the updated path
+    memset(buf, '\0', sizeof(buf));
     strcpy(buf, path);
 
     // Open init script for writing
