@@ -30,7 +30,7 @@ jobs:
       # Note the current convention is to use the -S and -B options here to specify source 
       # and build directories, but this is only available with CMake 3.13 and higher.  
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_FLAGS="-DENABLE_TESTING"
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
@@ -38,9 +38,35 @@ jobs:
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: cmake --build . --config $BUILD_TYPE
 
-    - name: Test
+    - name: Initialize home
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: ./multihome -s
+
+    - name: Unit Test
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      run: ./multihome -t
+
+    - name: Runtime Test
       working-directory: ${{runner.workspace}}/build
       shell: bash
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest -C $BUILD_TYPE
+      run: |
+        . ~/.multihome/init
+        . /etc/profile
+        . ~/.profile
+
+        echo "multihome location: $MULTIHOME"
+        echo "Current HOME: $HOME"
+        echo "Previous HOME: $HOME_OLD"
+        echo "Current PATH: $PATH"
+
+        echo "System account structure (/etc/skel):"
+        ls -la /etc/skel
+
+        echo "Current HOME structure:"
+        ls -la ~
+
