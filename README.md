@@ -1,5 +1,7 @@
 # multihome
 
+![Actions](https://github.com/jhunkeler/multihome/workflows/CMake/badge.svg)
+
 NFS mounted home directories are common when operating in a clustered environment and so are the problems that come along with it. Multihome manages your `HOME` environment variable on a per-host basis. When you log into a system, Multihome creates a new home directory using the system's default account skeleton, changes your `HOME` to point to it, then initializes your shell session from there. This allows you, as the user, to maintain unique home directories on any system within the cluster; complete with their own individualized settings.
 
 ## Usage
