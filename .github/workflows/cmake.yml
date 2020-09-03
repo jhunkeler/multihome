@@ -57,7 +57,7 @@ jobs:
       run: |
         . ~/.multihome/init
         . /etc/profile
-        . ~/.profile
+        . ~/.bash_profile
 
         echo "multihome location: $MULTIHOME"
         echo "Current HOME: $HOME"
@@ -67,6 +67,9 @@ jobs:
         echo "System account structure (/etc/skel):"
         ls -la /etc/skel
 
+        echo "Previous HOME structure:"
+        ls -la $HOME_OLD
+
         echo "Current HOME structure:"
-        ls -la ~
+        ls -la $HOME
 
