@@ -48,7 +48,7 @@ Your home directory is still served over NFS but now under multihome's control, 
      |         /         
      |        /         ======================================
      |       /--------- + /home/example/home_local/computerB +
-=====*=======            ======================================
+=====*=======           ======================================
 + Multihome +           
 =============           ======================================
              \--------- + /home/example/home_local/computerC +
