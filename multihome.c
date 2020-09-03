@@ -126,6 +126,8 @@ split_die_2:
 /**
  * Using $PATH, return the location of _name
  *
+ * If _name starts with "./" return the absolute path to the file
+ *
  * This function returns local storage
  *
  * @param _name program name
@@ -150,16 +152,24 @@ char *find_program(const char *_name) {
 
     memset(buf, '\0', sizeof(buf));
     found = 0;
-    for (int i = 0; parts[i] != NULL; i++) {
-        char tmp[PATH_MAX];
-        memset(tmp, '\0', sizeof(tmp));
-        strcat(tmp, parts[i]);
-        strcat(tmp, "/");
-        strcat(tmp, _name);
-        if (access(tmp, F_OK) == 0) {
+
+    if (strncmp(_name, "./", 2) == 0) {
+        if (access(_name, F_OK) == 0) {
             found = 1;
-            realpath(tmp, buf);
-            break;
+            realpath(_name, buf);
+        }
+    } else {
+        for (int i = 0; parts[i] != NULL; i++) {
+            char tmp[PATH_MAX];
+            memset(tmp, '\0', sizeof(tmp));
+            strcat(tmp, parts[i]);
+            strcat(tmp, "/");
+            strcat(tmp, _name);
+            if (access(tmp, F_OK) == 0) {
+                found = 1;
+                realpath(tmp, buf);
+                break;
+            }
         }
     }
 
