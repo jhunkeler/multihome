@@ -247,6 +247,7 @@ int shell(char *args[]){
  * Copy files using rsync
  * @param source file or directory
  * @param dest file or directory
+ * @param mode 0=direct copy, 1=update only
  * @return rsync exit code
  */
 int copy(char *source, char *dest, int mode) {
@@ -450,6 +451,24 @@ void user_transfer(int copy_mode) {
     fclose(fp);
 }
 
+char *strip_domainname(char *hostname) {
+    char *ptr;
+    char *nodename;
+
+    nodename = calloc(HOST_NAME_MAX, sizeof(char));
+    if (nodename == NULL) {
+        return NULL;
+    }
+
+    strncpy(nodename, hostname, HOST_NAME_MAX - 1);
+    ptr = strchr(nodename, '.');
+    if (ptr != NULL) {
+        *ptr = '\0';
+    }
+
+    return nodename;
+}
+
 #ifdef ENABLE_TESTING
 void test_split() {
     puts("split()");
@@ -619,16 +638,6 @@ int main(int argc, char *argv[]) {
         return errno;
     }
 
-    // Use short hostname
-    char *nodename = host_info.nodename;
-    char *nodename_orig = nodename;
-
-    nodename = strchr(host_info.nodename, '.');
-    if (nodename != NULL) {
-        *nodename = '\0';
-    }
-    nodename = nodename_orig;
-
     // Determine the user's home directory
     char *path_old;
     if (!arguments.update) {
@@ -655,11 +664,18 @@ int main(int argc, char *argv[]) {
     sprintf(multihome.config_init, "%s/%s", multihome.config_dir, MULTIHOME_CFG_INIT);
     sprintf(multihome.config_transfer, "%s/%s", multihome.config_dir, MULTIHOME_CFG_TRANSFER);
     sprintf(multihome.config_skeleton, "%s/%s", multihome.config_dir, MULTIHOME_CFG_SKEL);
+
+    // Use short hostname
+    char *nodename;
+    nodename = strip_domainname(host_info.nodename);
     sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, nodename);
+    free(nodename);
+
     sprintf(multihome.path_topdir, "%s/%s", multihome.path_new, MULTIHOME_TOPDIR);
     sprintf(multihome.marker, "%s/%s", multihome.path_new, MULTIHOME_MARKER);
 
     copy_mode = arguments.update; // 0 = normal copy, 1 = update files
+
 
     // Refuse to operate within a controlled home directory
     char already_inside[PATH_MAX];
