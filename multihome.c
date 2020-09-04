@@ -492,6 +492,11 @@ void user_transfer(int copy_mode) {
     fclose(fp);
 }
 
+/**
+ * Retrieve hostname from FQDN
+ * @param hostname
+ * @return short hostname
+ */
 char *strip_domainname(char *hostname) {
     char *ptr;
     char *nodename;
@@ -565,12 +570,22 @@ void test_touch() {
     assert(access(input, F_OK) == 0);
 }
 
+void test_strip_domainname() {
+    puts("strip_domainname()");
+    char *input = "subdomain.domain.tld";
+    char *result;
+
+    result = strip_domainname(input);
+    assert(strncmp(input, result, strlen("subdomain")) == 0);
+}
+
 void test_main() {
     test_count_substrings();
     test_split();
     test_mkdirs();
     test_shell();
     test_touch();
+    test_strip_domainname();
     exit(0);
 }
 #endif
@@ -666,7 +681,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    // Get account name for the effective user
+    // Get effective user account information
     uid = geteuid();
     if ((user_info = getpwuid(uid)) == NULL) {
         perror("getpwuid");
@@ -716,7 +731,6 @@ int main(int argc, char *argv[]) {
     sprintf(multihome.marker, "%s/%s", multihome.path_new, MULTIHOME_MARKER);
 
     copy_mode = arguments.update; // 0 = normal copy, 1 = update files
-
 
     // Refuse to operate within a controlled home directory
     char already_inside[PATH_MAX];
