@@ -1,5 +1,9 @@
 #include "multihome.h"
 
+#ifdef ENABLE_TESTING
+#include "tests.h"
+#endif
+
 
 /**
  * Globals
@@ -227,7 +231,7 @@ int mkdirs(char *path) {
  * @param args (char *[]){"/path/to/program", "arg1", "arg2, ..., NULL};
  * @return exit code of program
  */
-int shell(char *args[]){
+int shell(char *args[]) {
     pid_t pid;
     pid_t status;
 
@@ -515,80 +519,7 @@ char *strip_domainname(char *hostname) {
     return nodename;
 }
 
-#ifdef ENABLE_TESTING
-void test_split() {
-    puts("split()");
-    char **result;
-    size_t result_alloc;
 
-    result = split("one two three", " ", &result_alloc);
-    assert(strcmp(result[0], "one") == 0 && strcmp(result[1], "two") == 0 && strcmp(result[2], "three") == 0);
-    assert(result_alloc != 0);
-    free_array((void *)result, result_alloc);
-}
-
-void test_count_substrings() {
-    puts("count_substrings()");
-    size_t result;
-    result = count_substrings("one two three", " ");
-    assert(result == 2);
-}
-
-void test_mkdirs() {
-    puts("mkdirs()");
-    int result;
-    char *input = "this/is/a/test";
-
-    if (access(input, F_OK) == 0) {
-        assert(remove("this/is/a/test") == 0);
-        assert(remove("this/is/a") == 0);
-        assert(remove("this/is") == 0);
-        assert(remove("this") == 0);
-    }
-
-    result = mkdirs(input);
-    assert(result == 0);
-    assert(access(input, F_OK) == 0);
-}
-
-void test_shell() {
-    puts("shell()");
-    assert(shell((char *[]){"/bin/echo", "testing", NULL}) == 0);
-    assert(shell((char *[]){"/bin/date", NULL}) == 0);
-    assert(shell((char *[]){"/bin/unlikelyToExistAnywhere", NULL}) != 0);
-}
-
-void test_touch() {
-    puts("touch()");
-    char *input = "touched_file.txt";
-
-    if (access(input, F_OK) == 0) {
-        remove(input);
-    }
-
-    assert(touch(input) == 0);
-    assert(access(input, F_OK) == 0);
-}
-
-void test_strip_domainname() {
-    puts("strip_domainname()");
-    char *input = "subdomain.domain.tld";
-    char *result;
-
-    result = strip_domainname(input);
-    assert(strncmp(input, result, strlen("subdomain")) == 0);
-}
-
-void test_main() {
-    test_count_substrings();
-    test_split();
-    test_mkdirs();
-    test_shell();
-    test_touch();
-    test_strip_domainname();
-    exit(0);
-}
-#endif
 
 // begin argp setup
 static char doc[] = "Partition a home directory per-host when using a centrally mounted /home";
@@ -642,6 +573,17 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
     return 0;
 }
 
+/**
+ * Is rsync available?
+ * @return 0=not found, 1 found
+ */
+int rsync_exists() {
+    if (access(RSYNC_BIN, F_OK) < 0) {
+        return 1;
+    }
+    return 0;
+}
+
 static struct argp argp = { options, parse_opt, args_doc, doc };
 // end of argp setup
 
@@ -668,9 +610,9 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    // Refuse to operate if RSYNC_BIN is not available
-    if (access(RSYNC_BIN, F_OK) < 0) {
-        fprintf(stderr, "rsync program not found (expecting: %s)\n", RSYNC_ARGS);
+    // Refuse to operate if rsync is not available
+    if (rsync_exists() != 0) {
+        fprintf(stderr, "rsync program not found (expecting: %s)\n", RSYNC_BIN);
         return 1;
     }
 

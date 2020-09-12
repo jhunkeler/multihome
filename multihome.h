@@ -1,7 +1,3 @@
-//
-// Created by jhunk on 8/26/20.
-//
-
 #ifndef MULTIHOME_MULTIHOME_H
 #define MULTIHOME_MULTIHOME_H
 
@@ -41,5 +37,18 @@
 #define DISABLE_BUFFERING \
     setvbuf(stdout, NULL, _IONBF, 0); \
     setvbuf(stderr, NULL, _IONBF, 0);
+
+void free_array(void **arr, size_t nelem);
+ssize_t count_substrings(const char *s, char *sub);
+char **split(const char *sptr, char *delim, size_t *num_alloc);
+char *find_program(const char *_name);
+int shell(char *args[]);
+int mkdirs(char *path);
+int copy(char *source, char *dest, int mode);
+int touch(char *filename);
+char *get_timestamp(char **result);
+void write_init_script();
+void user_transfer(int copy_mode);
+char *strip_domainname(char *hostname);
 
 #endif //MULTIHOME_MULTIHOME_H

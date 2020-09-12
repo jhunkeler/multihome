@@ -29,7 +29,8 @@ find_program(RSYNC_BIN
 configure_file("config.h.in" "config.h" @ONLY)
 
 add_executable(multihome
-        multihome.c)
+        multihome.c
+        tests.c)
 
 install(TARGETS multihome
         RUNTIME DESTINATION bin)
