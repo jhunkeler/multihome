@@ -62,7 +62,7 @@ Your home directory is still served over NFS but now under multihome's control, 
 ## Installing
 
 ```
-$ git clone https://github.com/jhunk/multihome
+$ git clone https://github.com/jhunkeler/multihome
 $ cd multihome
 $ mkdir build
 $ cd build
