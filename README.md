@@ -87,7 +87,7 @@ Parsing transfer configuration, if present
 Creating marker file: /home/example/home_local/hostname/.multihome_controlled
 ```
 
-Passing the`-s` (`--script`) option generates the initialization script needed to manage your home directories, `~/.multihome/init`, and can be applied by adding the following snippet to the top of your ~/.bash_profile` (or other POSIX-compatible shell initialization scripts):
+Passing the`-s` (`--script`) option generates the initialization script needed to manage your home directories, `~/.multihome/init`, and can be applied by adding the following snippet to the top of your `~/.bash_profile` (or other POSIX-compatible shell initialization scripts):
 
 ```bash
 if [ -f "$HOME/.multihome/init" ]; then
@@ -106,7 +106,7 @@ fi
 
 ### With a custom account skeleton
 
-When `multihome` creates a new home directory it copies the contents of `/etc/skel`, then `$HOME/.multihome/skel`.
+When `multihome` creates a new home directory it copies the contents of `/etc/skel` to `$HOME/.multihome/skel`.
 
 ```
 $ mkdir -p ~/.multihome/skel
