@@ -168,7 +168,8 @@ TYPE WHERE
 
 ```bash
 $ cat << EOF > ~/.multihome/transfer
-H .Xauthority        # Hardlink to /home/example/.Xauthority file
+H notes.txt          # Hardlink to /home/example/notes.txt
+L .Xauthority        # Symlink to /home/example/.Xauthority file
 L .vim               # Symlink to /home/example/.vim directory
 T .vimrc             # Copy /home/example/.vim directory
 ```
@@ -188,7 +189,7 @@ Passing the `-u` (`--update`) option copies files from `/etc/skel`, `~/.multihom
 
 * SSH reads its configuration from `/home/example/.ssh` instead of `/home/example/home_local/.ssh`. This is a security feature and there is no way to override this behavior unless you recompile SSH/D from source. As a workaround use a symbolic link to improve your quality of life. At least `~/.ssh` will exist and point to the right place.
 
-    *~/.multihome/transfer*:
+#### ~/.multihome/transfer:
 ```
 L .ssh
 ```
@@ -199,7 +200,7 @@ X11 connection rejected because of wrong authentication.
 xterm: Xt error: Can't open display: x:yy.z
 ```
 
-    *~/.multihome/transfer*:
+#### ~/.multihome/transfer    
 ```
 L .Xauthority
 # Note: A hardlink or direct transfer will not work here. The file must be a symlink.
