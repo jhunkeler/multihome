@@ -395,6 +395,7 @@ void write_init_script() {
             fclose(fp_output);
         }
     }
+    closedir(d);
 }
 
 /**
@@ -769,7 +770,9 @@ int main(int argc, char *argv[]) {
     }
 
     // Populate multihome struct
-    strcpy(multihome.entry_point, argv[0]);
+    char *entry_point;
+    entry_point = find_program(argv[0]);
+    strcpy(multihome.entry_point, entry_point);
     strcpy(multihome.path_old, path_old);
     strcpy(multihome.path_root, MULTIHOME_ROOT);
     strcpy(multihome.scripts_dir, MULTIHOME_SCRIPTS_DIR);
