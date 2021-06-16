@@ -57,7 +57,7 @@ void test_touch() {
 
 void test_strip_domainname() {
     puts("strip_domainname()");
-    char *input = "subdomain.domain.tld";
+    char *input = strdup("subdomain.domain.tld");
     char *truth = "subdomain";
     char *result;
 
