@@ -328,25 +328,6 @@ char *get_timestamp() {
     return result;
 }
 
-char *str_ends_with(const char *s1, char *s2) {
-    if (!s1 || !s2) {
-        return NULL;
-    }
-    size_t s1_len;
-    size_t s2_len;
-    const char *start;
-
-    s1_len = strlen(s1);
-    s2_len = strlen(s2);
-
-    if (s2_len > s1_len) {
-        return NULL;
-    }
-
-    start = &s1[s1_len - s2_len];
-    return strstr(start, s2);
-}
-
 /**
  * Generate multihome initialization scripts
  */
@@ -441,18 +422,31 @@ static int strip(char **str) {
 }
 
 /**
+ * Read and apply transformations defined by the host_group configuration file
+ *
+ * FORMAT:
+ *     # Comment
+ *     HOST_PATTERN = COMMON_HOME
+ *     HOST_PATTERN=COMMON_HOME  # Inline comment
+ *
+ * EXAMPLE:
+ * # To map all hosts starting with "example" to one home directory
+ *     example.* = example
+ * # To map only hosts example1 and example2 to home directory "special_boxes"
+ *     example[1-2]+ = special_boxes
+ * # Then map the remaining hosts to the "example" home directory
+ *     example.* = example
  *
  * @param hostname
- * @return
+ * @return 0=not found, 1=found
  */
 int user_host_group(char **hostname) {
     int found;
     FILE *fp;
-    char line[PATH_MAX];
+    char *recptr;
+    char rec[PATH_MAX];
     char home_tmp[PATH_MAX];
-    size_t lineno;
     int status;
-
 
     fp = fopen(multihome.config_host_group, "r");
     if (!fp) {
@@ -464,17 +458,48 @@ int user_host_group(char **hostname) {
     strcpy(home_tmp, (*hostname));
 
     found = 0;
-    for (size_t i = 0; (fgets(line, PATH_MAX - 1, fp) != NULL) && !found; i++) {
+    for (size_t i = 0; (fgets(rec, PATH_MAX - 1, fp) != NULL) && !found; i++) {
         size_t alloc;
         regex_t compiled;
         regmatch_t match[100];
-        char **data;
         int num_matches;
+        char **data;
+        char *comment;
 
-        data = split(line, "=", &alloc);
-        strip(&data[0]);
-        strip(&data[1]);
+        recptr = rec;
 
+        // Ignore empty lines
+        if (strlen(recptr) == 0 || *recptr == '\n') {
+            continue;
+        }
+
+        // Ignore comments and inline comments
+        if (*recptr == '#') {
+            continue;
+        } else if ((comment = strstr(recptr, "#")) != NULL) {
+            comment--;
+            for (; comment != NULL && isblank(*comment) && comment > recptr; comment--) {
+                *comment = '\0';
+            }
+        }
+
+        // Report and skip invalid records
+        if (strchr(recptr, '=') == NULL) {
+            fprintf(stderr, "%s:%zu:syntax error, missing '=' operator\n", multihome.config_host_group, i);
+            continue;
+        }
+
+        data = split(recptr, "=", &alloc);
+        if (data == NULL) {
+            continue;
+        }
+
+        // Strip blank characters from data
+        for (size_t item = 0; alloc > 1 && item < alloc - 1; item++) {
+            strip(&data[item]);
+        }
+
+        // Initialize regex patttern
         if (regcomp(&compiled, data[0], 0) != 0) {
             // handle compilation failure
             fprintf(stderr, "%s:%zu:unable to compile regex pattern '%s'\n", multihome.config_host_group, i, data[0]);
@@ -482,6 +507,7 @@ int user_host_group(char **hostname) {
             continue;
         }
 
+        // Check whether the regex pattern matches
         num_matches = sizeof(match) / sizeof(regmatch_t);
         status = regexec(&compiled, (*hostname), num_matches, match, REG_EXTENDED);
         if (status == REG_NOMATCH) {
@@ -496,6 +522,7 @@ int user_host_group(char **hostname) {
             strcpy(home_tmp, data[1]);
             found = 1;
         }
+
         regfree(&compiled);
         free_array((void **)data, alloc);
     }
@@ -551,7 +578,7 @@ void user_transfer(int copy_mode) {
         field_type = recptr;
 
         // Ignore empty lines
-        if (strlen(recptr) == 0) {
+        if (strlen(recptr) == 0 || *recptr == '\n') {
             continue;
         }
 
