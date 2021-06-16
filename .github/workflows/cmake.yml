@@ -93,7 +93,7 @@ jobs:
         test -L .gemrc
 
         echo
-        for x in ~/.multihome/init.*; do
+        for x in topdir/.multihome/init.*; do
             echo "Dumping $x ..."
             cat "$x"
             echo
