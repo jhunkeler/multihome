@@ -47,12 +47,12 @@ jobs:
     - name: Initialize home
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: ./multihome -s
+      run: multihome -s
 
     - name: Unit Test
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: ./multihome -t
+      run: multihome -t
 
     - name: Runtime Test
       working-directory: ${{runner.workspace}}/build
