@@ -38,6 +38,12 @@ jobs:
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: cmake --build . --config $BUILD_TYPE
 
+    - name: Install
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      run: sudo make install
+
     - name: Initialize home
       working-directory: ${{runner.workspace}}/build
       shell: bash
@@ -52,7 +58,7 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       shell: bash
       run: |
-        . ~/.multihome/init
+        . ~/.multihome/init.sh
         . /etc/profile
         . ~/.bash_profile
 
