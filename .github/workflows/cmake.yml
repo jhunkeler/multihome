@@ -41,7 +41,6 @@ jobs:
     - name: Install
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: sudo make install
 
     - name: Initialize home
@@ -92,3 +91,10 @@ jobs:
         test -f TESTFILE
         test -f .gitconfig
         test -L .gemrc
+
+        echo
+        for x in ~/.multihome/init.*; do
+            echo "Dumping $x ..."
+            cat "$x"
+            echo
+        done
