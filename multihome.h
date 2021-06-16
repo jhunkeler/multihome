@@ -19,6 +19,8 @@
 #include <wait.h>
 #include <argp.h>
 #include <time.h>
+#include <dirent.h>
+#include <regex.h>
 #include "config.h"
 
 #define VERSION "0.0.1"
@@ -26,7 +28,7 @@
 #define MULTIHOME_TOPDIR "topdir"
 #define MULTIHOME_CFGDIR ".multihome"
 #define MULTIHOME_CFG_TRANSFER "transfer"
-#define MULTIHOME_CFG_INIT "init"
+#define MULTIHOME_CFG_HOST_GROUP "host_group"
 #define MULTIHOME_CFG_SKEL "skel/"  // NOTE: Trailing slash is required
 #define MULTIHOME_MARKER ".multihome_controlled"
 #define OS_SKEL_DIR "/etc/skel/"    // NOTE: Trailing slash is required
@@ -46,7 +48,7 @@ int shell(char *args[]);
 int mkdirs(char *path);
 int copy(char *source, char *dest, int mode);
 int touch(char *filename);
-char *get_timestamp(char **result);
+char *get_timestamp();
 void write_init_script();
 void user_transfer(int copy_mode);
 char *strip_domainname(char *hostname);
