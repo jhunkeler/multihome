@@ -778,6 +778,15 @@ int main(int argc, char *argv[]) {
     sprintf(multihome.config_skeleton, "%s/%s", multihome.config_dir, MULTIHOME_CFG_SKEL);
     sprintf(multihome.config_host_group, "%s/%s", multihome.config_dir, MULTIHOME_CFG_HOST_GROUP);
 
+    // Generate configuration directory
+    if (access(multihome.config_dir, F_OK) < 0) {
+        fprintf(stderr, "Creating configuration directory: %s\n", multihome.config_dir);
+        if (mkdirs(multihome.config_dir) < 0) {
+            perror(multihome.config_dir);
+            return errno;
+        }
+    }
+
     // Generate a blank host group configuration
     if (access(multihome.config_host_group, F_OK) < 0) {
         fprintf(stderr, "Creating new host group configuration: %s\n", multihome.config_host_group);
