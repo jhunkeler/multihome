@@ -92,7 +92,7 @@ Passing the`-s` (`--script`) option generates the initialization script needed t
 ```bash
 if [ -f "$HOME/.multihome/init" ]; then
     # Switch to managed home directory
-    . $HOME/.multihome/init
+    . $HOME/.multihome/init.sh
 
     # Reinitialize the system shell profile
     [ -f "/etc/profile" ] && . /etc/profile
@@ -214,6 +214,6 @@ L .Xauthority
 
     If your `/home/your_user/.bashrc` (often called by `~/.bash_profile`) makes a hard-coded reference to `/home/your_user/.bash_profile` the shell will enter an infinite loop. To interrupt this loop hit `ctrl-c` multiple times. Now edit your shell scripts, correct the problem, log out, and log back into the system.
 
-* Support my shell! I use `tcsh`, heretic!
+* Support my shell, heretic!
 
-    I have no interest in supporting shells that aren't `sh`-compatible. PRs are welcome, of course.
+    PRs are welcome, of course.
