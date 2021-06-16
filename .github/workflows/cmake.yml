@@ -38,21 +38,26 @@ jobs:
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: cmake --build . --config $BUILD_TYPE
 
+    - name: Install
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: sudo make install
+
     - name: Initialize home
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: ./multihome -s
+      run: multihome -s
 
     - name: Unit Test
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: ./multihome -t
+      run: multihome -t
 
     - name: Runtime Test
       working-directory: ${{runner.workspace}}/build
       shell: bash
       run: |
-        . ~/.multihome/init
+        . ~/.multihome/init.sh
         . /etc/profile
         . ~/.bash_profile
 
@@ -86,3 +91,10 @@ jobs:
         test -f TESTFILE
         test -f .gitconfig
         test -L .gemrc
+
+        echo
+        for x in topdir/.multihome/init.*; do
+            echo "Dumping $x ..."
+            cat "$x"
+            echo
+        done

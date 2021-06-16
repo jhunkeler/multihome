@@ -16,9 +16,10 @@ struct {
     char marker[PATH_MAX];
     char entry_point[PATH_MAX];
     char config_dir[PATH_MAX];
+    char config_host_group[PATH_MAX];
     char config_transfer[PATH_MAX];
     char config_skeleton[PATH_MAX];
-    char config_init[PATH_MAX];
+    char scripts_dir[PATH_MAX];
 } multihome;
 
 /**
@@ -50,7 +51,7 @@ ssize_t count_substrings(const char *s, char *sub) {
     char *str_orig;
     size_t str_length;
     size_t sub_length;
-    size_t result;
+    ssize_t result;
 
     str = strdup(s);
     if (str == NULL) {
@@ -283,7 +284,7 @@ int copy(char *source, char *dest, int mode) {
         strcat(args, "u");
     }
 
-    return shell((char *[]){RSYNC_BIN, args, source, dest, NULL});
+    return shell((char *[]){MULTIHOME_RSYNC_BIN, args, source, dest, NULL});
 }
 
 /**
@@ -305,20 +306,12 @@ int touch(char *filename) {
 /**
  * Get date and time as a string
  *
- * If result is NULL this function will return a pointer to a heap address.
- * The caller is responsible for freeing memory.
- *
- * @param result buffer must be at least 22 bytes, or NULL
- * @return pointer to buffer containing date and time
+ * @return pointer to buffer containing date and time (do not free())
  */
-char *get_timestamp(char **result) {
+char *get_timestamp() {
+    static char result[100];
     struct tm *tm;
     time_t now;
-
-    if ((*result) == NULL) {
-        // I doubt anyone use this program ~10,000 years from now
-        (*result) = calloc(strlen("xx-xx-xxxx @ xx:xx:xx") + 1, sizeof(char));
-    }
 
     // Get current time
     time(&now);
@@ -327,60 +320,190 @@ char *get_timestamp(char **result) {
     tm = localtime(&now);
 
     // Write result to buffer
-    sprintf((*result), "%02d-%02d-%d @ %02d:%02d:%02d",
+    memset(result, '\0', sizeof(result));
+    sprintf(result, "%02d-%02d-%d @ %02d:%02d:%02d",
             tm->tm_mon + 1, tm->tm_mday, tm->tm_year + 1900,
             tm->tm_hour, tm->tm_min, tm->tm_sec);
 
-    return (*result);
+    return result;
+}
+
+char *str_ends_with(const char *s1, char *s2) {
+    if (!s1 || !s2) {
+        return NULL;
+    }
+    size_t s1_len;
+    size_t s2_len;
+    const char *start;
+
+    s1_len = strlen(s1);
+    s2_len = strlen(s2);
+
+    if (s2_len > s1_len) {
+        return NULL;
+    }
+
+    start = &s1[s1_len - s2_len];
+    return strstr(start, s2);
 }
 
 /**
- * Generate multihome initialization script
+ * Generate multihome initialization scripts
  */
 void write_init_script() {
-    const char *script_block = \
-        "#\n# This script was generated on %s\n#\n\n"
-        "# Set location of multihome to avoid PATH lookups\n"
-        "MULTIHOME=%s\n"
-        "if [ -x $MULTIHOME ]; then\n"
-        "    # Save HOME\n"
-        "    HOME_OLD=$HOME\n"
-        "    # Redeclare HOME\n"
-        "    HOME=$($MULTIHOME)\n"
-        "    # Switch to new HOME\n"
-        "    if [ \"$HOME\" != \"$HOME_OLD\" ]; then\n"
-        "        cd $HOME\n"
-        "    fi\n"
-        "fi\n";
-    char buf[PATH_MAX];
-    char date[100];
-    char *path;
+    char buf[BUFSIZ];
+    DIR *d;
+    struct dirent *rec;
+    char *date;
+
+    memset(buf, '\0', sizeof(buf));
+
+    d = opendir(multihome.scripts_dir);
+    if (!d) {
+        perror(multihome.scripts_dir);
+        exit(1);
+    }
+    while ((rec = readdir(d)) != NULL) {
+        if (rec->d_type == DT_REG && strstr(rec->d_name, "init.")) {
+            FILE *fp_input;
+            FILE *fp_output;
+            char *script_name;
+            char path_input[PATH_MAX];
+            char path_output[PATH_MAX];
+
+            script_name = basename(rec->d_name);
+            sprintf(path_input, "%s/%s", multihome.scripts_dir, script_name);
+            fp_input = fopen(path_input, "r");
+            if (!fp_input) {
+                perror(rec->d_name);
+                exit(1);
+            }
+            memset(buf, '\0', sizeof(buf));
+            fread(buf, sizeof(char), sizeof(buf) - 1, fp_input);
+            fclose(fp_input);
+
+            sprintf(path_output, "%s/%s", multihome.config_dir, script_name);
+            fp_output = fopen(path_output, "w+");
+            if (!fp_output) {
+                perror(path_output);
+                exit(1);
+            }
+            date = get_timestamp();
+            fprintf(fp_output, "# Version: %s\n", VERSION);
+            fprintf(fp_output, "# Generated: %s\n\n", date);
+            fprintf(fp_output, buf, multihome.entry_point);
+            fclose(fp_output);
+        }
+    }
+    closedir(d);
+}
+
+/**
+ * End string on first occurrence of LF or whitespace
+ * @param str
+ * @return non-zero if LF not found
+ */
+static int strip(char **str) {
+    char *orig;
+    char *tmp;
+    char *result;
+
+    orig = (*str);
+    tmp = NULL;
+    result = strchr((*str), '\n');
+    if (result) {
+        *result = '\0';
+    }
+
+    tmp = (*str);
+    while(tmp) {
+        if (isblank(*tmp)) {
+            tmp++;
+            continue;
+        }
+        break;
+    }
+    size_t size;
+    size_t len;
+    size = tmp - (*str);
+    len = strlen(tmp);
+
+    memmove(orig, tmp, len);
+    len = strlen(orig) - size;
+    *((*str) + len) = '\0';
+
+    result = strrchr((*str), ' ');
+    if (result) {
+        *result = '\0';
+    }
+
+    return 0;
+}
+
+/**
+ *
+ * @param hostname
+ * @return
+ */
+int user_host_group(char **hostname) {
+    int found;
     FILE *fp;
+    char line[PATH_MAX];
+    char home_tmp[PATH_MAX];
+    size_t lineno;
+    int status;
 
-    // Populate buf with the program's argv[0] record
-    strcpy(buf, multihome.entry_point);
 
-    // Find the program's system path
-    path = find_program(buf);
-    if (path == NULL) {
-        fprintf(stderr, "%s not found on $PATH\n", buf);
+    fp = fopen(multihome.config_host_group, "r");
+    if (!fp) {
+        perror(multihome.config_host_group);
         exit(1);
     }
 
-    // Clear buf and store the updated path
-    memset(buf, '\0', sizeof(buf));
-    strcpy(buf, path);
+    // Preserve hostname
+    strcpy(home_tmp, (*hostname));
 
-    // Open init script for writing
-    fp = fopen(multihome.config_init, "w+");
-    if (fp == NULL) {
-        perror(multihome.config_init);
-        exit(errno);
+    found = 0;
+    for (size_t i = 0; (fgets(line, PATH_MAX - 1, fp) != NULL) && !found; i++) {
+        size_t alloc;
+        regex_t compiled;
+        regmatch_t match[100];
+        char **data;
+        int num_matches;
+
+        data = split(line, "=", &alloc);
+        strip(&data[0]);
+        strip(&data[1]);
+
+        if (regcomp(&compiled, data[0], 0) != 0) {
+            // handle compilation failure
+            fprintf(stderr, "%s:%zu:unable to compile regex pattern '%s'\n", multihome.config_host_group, i, data[0]);
+            free_array((void **) data, alloc);
+            continue;
+        }
+
+        num_matches = sizeof(match) / sizeof(regmatch_t);
+        status = regexec(&compiled, (*hostname), num_matches, match, REG_EXTENDED);
+        if (status == REG_NOMATCH) {
+            // Ignore unmatched records
+        } else if (status > 0) {
+            // handle fatal error
+            char errbuf[BUFSIZ];
+            regerror(status, &compiled, errbuf, BUFSIZ);
+            fprintf(stderr, "%s:%zu:regex %s\n", multihome.config_host_group, i, errbuf);
+        } else {
+            // Replace preserved hostname with the requested name, and stop
+            strcpy(home_tmp, data[1]);
+            found = 1;
+        }
+        regfree(&compiled);
+        free_array((void **)data, alloc);
     }
-
-    // Write init script
-    fprintf(fp, script_block, get_timestamp((char **) &date), buf);
     fclose(fp);
+
+    // Replace the hostname
+    strcpy((*hostname), home_tmp);
+    return found;
 }
 
 /**
@@ -503,22 +626,14 @@ void user_transfer(int copy_mode) {
  */
 char *strip_domainname(char *hostname) {
     char *ptr;
-    char *nodename;
 
-    nodename = calloc(HOST_NAME_MAX, sizeof(char));
-    if (nodename == NULL) {
-        return NULL;
-    }
-
-    strncpy(nodename, hostname, HOST_NAME_MAX - 1);
-    ptr = strchr(nodename, '.');
+    ptr = strchr(hostname, '.');
     if (ptr != NULL) {
         *ptr = '\0';
     }
 
-    return nodename;
+    return hostname;
 }
-
 
 
 // begin argp setup
@@ -578,7 +693,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
  * @return 0=not found, 1 found
  */
 int rsync_exists() {
-    if (access(RSYNC_BIN, F_OK) < 0) {
+    if (access(MULTIHOME_RSYNC_BIN, F_OK) < 0) {
         return 1;
     }
     return 0;
@@ -612,7 +727,7 @@ int main(int argc, char *argv[]) {
 
     // Refuse to operate if rsync is not available
     if (rsync_exists() != 0) {
-        fprintf(stderr, "rsync program not found (expecting: %s)\n", RSYNC_BIN);
+        fprintf(stderr, "rsync program not found (expecting: %s)\n", MULTIHOME_RSYNC_BIN);
         return 1;
     }
 
@@ -655,20 +770,43 @@ int main(int argc, char *argv[]) {
     }
 
     // Populate multihome struct
-    strcpy(multihome.entry_point, argv[0]);
+    char *entry_point;
+    entry_point = find_program(argv[0]);
+    strcpy(multihome.entry_point, entry_point);
     strcpy(multihome.path_old, path_old);
     strcpy(multihome.path_root, MULTIHOME_ROOT);
+    strcpy(multihome.scripts_dir, MULTIHOME_SCRIPTS_DIR);
     sprintf(multihome.config_dir, "%s/%s", multihome.path_old, MULTIHOME_CFGDIR);
-    sprintf(multihome.config_init, "%s/%s", multihome.config_dir, MULTIHOME_CFG_INIT);
     sprintf(multihome.config_transfer, "%s/%s", multihome.config_dir, MULTIHOME_CFG_TRANSFER);
     sprintf(multihome.config_skeleton, "%s/%s", multihome.config_dir, MULTIHOME_CFG_SKEL);
+    sprintf(multihome.config_host_group, "%s/%s", multihome.config_dir, MULTIHOME_CFG_HOST_GROUP);
 
-    // Use short hostname
+    // Generate configuration directory
+    if (access(multihome.config_dir, F_OK) < 0) {
+        fprintf(stderr, "Creating configuration directory: %s\n", multihome.config_dir);
+        if (mkdirs(multihome.config_dir) < 0) {
+            perror(multihome.config_dir);
+            return errno;
+        }
+    }
+
+    // Generate a blank host group configuration
+    if (access(multihome.config_host_group, F_OK) < 0) {
+        fprintf(stderr, "Creating new host group configuration: %s\n", multihome.config_host_group);
+        if (touch(multihome.config_host_group) < 0) {
+            perror(multihome.config_host_group);
+            return errno;
+        }
+    }
+
+    // The short hostname is used to establish the name for the new home directory
     char *nodename;
     nodename = strip_domainname(host_info.nodename);
-    sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, nodename);
-    free(nodename);
 
+    // When this host belongs to a host group, modify the hostname once more
+    user_host_group(&nodename);
+
+    sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, nodename);
     sprintf(multihome.path_topdir, "%s/%s", multihome.path_new, MULTIHOME_TOPDIR);
     sprintf(multihome.marker, "%s/%s", multihome.path_new, MULTIHOME_MARKER);
 
