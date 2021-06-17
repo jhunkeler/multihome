@@ -87,12 +87,14 @@ $ sudo make install
 # Example hostname: "hostname"
 #
 $ multihome -s
+Creating configuration directory: /home/example/.multihome
+Creating host group configuration: /home/example/.multihome/host_group
 Creating home directory: /home/example/home_local/hostname
 Creating symlink to original home directory: /home/example/home_local/hostname/topdir
 Creating user skel directory: /home/example/.multihome/skel/
-Injecting account skeleton: /etc/skel/
-Injecting user-defined account skeleton: /home/example/.multihome/skel/
-Parsing transfer configuration, if present
+Creating transfer configuration: /home/example/.multihome/transfer
+Pulling account skeleton: /etc/skel/
+Pulling user-defined account skeleton: /home/example/.multihome/skel/
 Creating marker file: /home/example/home_local/hostname/.multihome_controlled
 ```
 
@@ -290,7 +292,6 @@ Passing the `-u` (`--update`) option copies files from `/etc/skel`, `~/.multihom
 $ multihome -u
 Pulling account skeleton: /etc/skel/
 Pulling user-defined account skeleton: /home/example/.multihome/skel/
-Parsing transfer configuration: /home/example/.multihome/transfer
 ```
 
 
@@ -321,7 +322,7 @@ L .Xauthority
 
 * When I login nothing happens!
 
-    If your `/home/your_user/.bashrc` (often called by `~/.bash_profile`) makes a hard-coded reference to `/home/your_user/.bash_profile` the shell will enter an infinite loop. To interrupt this loop hit `ctrl-c` multiple times. Now edit your shell scripts, correct the problem, log out, and log back into the system.
+    If your shell RC (e.g. `~/.bashrc`) file makes a hardcoded reference to your shell profile (e.g. `~/.bash_profile`) the shell will enter an infinite loop. To interrupt this loop hit `ctrl-c` multiple times. Now edit your shell scripts, correct the problem, log out, and log back into the system.
 
 * Support my shell, heretic!
 
