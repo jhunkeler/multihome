@@ -39,24 +39,33 @@ Without multihome your cluster probably resembles something like this. Each comp
 
 ## Your multihome cluster
 
-Your home directory is still served over NFS but now under multihome's control, so each login on a host produces a new `HOME`. 
+Under multihome's scheme the NFS shared home directory houses a `HOME` unique to each host accessed by your account.
 
 ```
-=============           ======================================
-+ NFS /home +    /----- + /home/example/home_local/computerA +
-=====*=======   /       ======================================
-     |         /         
-     |        /         ======================================
-     |       /--------- + /home/example/home_local/computerB +
-=====*=======           ======================================
-+ Multihome +           
-=============           ======================================
-             \--------- + /home/example/home_local/computerC +
-              \         ======================================
-               \          
-                \       ======================================
-                 \----- + /home/example/home_local/computerD +
-                        ======================================
+=============             ======================================
++ NFS /home +    /------- + /home/example/home_local/computerA +
+=====*=======   /         ======================================
+     |         /           
+     |        /           ======================================
+     |       /----------- + /home/example/home_local/computerB +
+=====*=======             ======================================
++ Multihome +             
+=====*=======             ======================================
+     |       \----------- + /home/example/home_local/computerC +
+     |        \           ======================================
+     |         \            
+     |          \         ======================================
+     |           \------- + /home/example/home_local/computerD +
+     |                    ======================================
+     |
+     |
+     |    GROUP           ======================================
+     \-(clusterA[0-9]+)-- + /home/example/home_local/clusterA +
+     |                    ======================================
+     |
+     |    GROUP           ======================================
+     \-(clusterB[0-9]+)-- + /home/example/home_local/clusterB +
+                          ======================================
 ```
 
 ## Installing
@@ -87,10 +96,31 @@ Parsing transfer configuration, if present
 Creating marker file: /home/example/home_local/hostname/.multihome_controlled
 ```
 
-Passing the`-s` (`--script`) option generates the initialization script needed to manage your home directories, `~/.multihome/init`, and can be applied by adding the following snippet to the top of your `~/.bash_profile` (or other POSIX-compatible shell initialization scripts):
+Passing the`-s` (`--script`) option generates the initialization script needed to manage your home directories, `~/.multihome/init.[c]sh`, and can be applied by adding the appropriate snippet below to the top of your shell profile.
+
+### POSIX SH
+
+**/home/example/.profile:**
 
 ```bash
-if [ -f "$HOME/.multihome/init" ]; then
+if [ -f "$HOME/.multihome/init.sh" ]; then
+    # Switch to managed home directory
+    . $HOME/.multihome/init.sh
+
+    # Reinitialize the system shell profile
+    [ -f "/etc/profile" ] && . /etc/profile
+
+    # Initialize managed home directory's shell profile
+    [ -f "$HOME/.profile" ] && . $HOME/.profile
+fi
+```
+
+### BASH
+
+**/home/example/.bash_profile:**
+
+```bash
+if [ -f "$HOME/.multihome/init.sh" ]; then
     # Switch to managed home directory
     . $HOME/.multihome/init.sh
 
@@ -102,11 +132,83 @@ if [ -f "$HOME/.multihome/init" ]; then
 fi
 ```
 
+### ZSH
+
+**/home/example/.zshrc:**
+
+```bash
+if [ -f "$HOME/.multihome/init.sh" ]; then
+    # Switch to managed home directory
+    . $HOME/.multihome/init.sh
+
+    # Reinitialize the system shell profile
+    [ -f "/etc/zsh/zprofile" ] && . /etc/zsh/zprofile
+
+    # Initialize managed home directory's shell profile
+    [ -f "$HOME/.zshrc" ] && . $HOME/.zshrc
+fi
+```
+
+### [T]CSH
+
+**/home/example/.cshrc**
+
+```tcsh
+if ( -f "$HOME/.multihome/init.csh" ) then
+    # Switch to managed home directory
+    source $HOME/.multihome/init.csh
+
+    # Reinitialize the system shell profile
+    if ( -f "/etc/csh.login" ) then
+        source /etc/csh.login
+    endif
+
+    # Initialize managed home directory's shell profile
+    if ( -f "$HOME/.cshrc" )
+      source $HOME/.cshrc
+    endif
+fi
+```
+
+## Managing host groups
+
+The `~/.multihome/host_group` configuration file allows one to create logical (shared) home directories based on hostname patterns.
+
+### Configuration Format
+
+```config
+# comment (inline comments are OK too)
+HOST_REGEX = GROUP_NAME
+```
+
+Host pattern matching is implemented using [POSIX.2 (extended) regular expression](https://en.m.wikibooks.org/wiki/Regular_Expressions/POSIX_Basic_Regular_Expressions) syntax.
+
+#### Example
+
+```bash
+# Map any hosts starting with "example" to home directory named "example"
+example.* = example
+
+# Map hosts "cluster_machine1", "cluster_machine2", "other_machine8", and
+# "other_machine9" to the home directory, "special_boxes".
+(cluster_machine[1,2]|other_machine[8,9])$ = special_boxes
+
+# Map remaining "cluster_machine" hosts to the "cluster_machines" home directory
+cluster_machine.* = cluster_machines
+
+# Map dev/test/prod systems
+^dlproduct.* = product_dev
+^tlproduct.* = product_test
+^plproduct.* = product_prod
+```
+
 ## Managing data
 
-### With a custom account skeleton
+### Via custom account skeleton
 
-When `multihome` creates a new home directory it copies the contents of `/etc/skel` to `$HOME/.multihome/skel`.
+When `multihome` creates a new home directory it copies the contents of `$HOME/.multihome/skel/`.
+
+For example, if you are an avid `vim` user and don't want to maintain its configuration manually for each host, you can create symbolic links in the `skel` directory pointing to the configuration data.
 
 ```
 $ mkdir -p ~/.multihome/skel
@@ -126,7 +228,7 @@ lrwxrwxrwx 1 example example   16 Sep  1 14:18 .vim -> /home/example/.vim
 lrwxrwxrwx 1 example example   18 Sep  1 14:18 .vimrc -> /home/example/.vimrc
 ```
 
-When `multihome` initializes a new home directory you will notice your customizations have been incorporated into the base account skeleton:
+When `multihome` initializes a home directory these customizations will applied automatically:
 
 ```
 $ ls -la /home/example/home_local/hostname
@@ -140,16 +242,15 @@ drwxr-xr-x  11 example example  4096 Aug 27 23:31 .config
 -rw-r--r--   1 example example  4855 Oct 29  2017 .dir_colors
 -rw-r--r--   1 example example   141 Aug 11 09:04 .profile
 -rw-r--r--   1 example example  3729 Feb  6  2020 .screenrc
-lrwxrwxrwx  1 example example   16 Sep  1 14:18 .vim -> /home/example/.vim
-lrwxrwxrwx  1 example example   18 Sep  1 14:18 .vimrc -> /home/example/.vimrc
+lrwxrwxrwx   1 example example    16 Sep  1 14:18 .vim -> /home/example/.vim
+lrwxrwxrwx   1 example example    18 Sep  1 14:18 .vimrc -> /home/example/.vimrc
 -rwxr-xr-x   1 example example   100 Oct 29  2017 .Xclients
 -rw-r--r--   1 example example  1500 Aug 11 09:04 .xinitrc
 ```
 
 ### Via transfer configuration
 
-
-To avoid broken shells, errors produced by the `~/.multihome/transfer` configuration are reported on `stderr`, but will not halt the program.
+The `~/.multihome/transfer` configuration file allows one to link or copy files and directories from their base home directory into the newly created home directory. This method can be used in tandem with `skel`, however if the account skeleton provides a file, yet the transfer configuration wants to create a link instead (types `H` and `L`), the regular file will be replaced by the link.
 
 #### Configuration format
 
@@ -160,9 +261,9 @@ TYPE WHERE
 
 #### Types
 
-- `H`: Create a hardlink from `/home/example/WHERE` to `/home/example/home_local/`
-- `L`: Create a symbolic link from `/home/example/WHERE` to `/home/example/home_local/`
-- `T`: Transfer file or directory from `/home/example/WHERE` to `/home/example/home_local/`
+- `H`: Create a hardlink from `/home/example/WHERE` to `/home/example/home_local/HOST`
+- `L`: Create a symbolic link from `/home/example/WHERE` to `/home/example/home_local/HOST`
+- `T`: Transfer file or directory from `/home/example/WHERE` to `/home/example/home_local/HOST`
 
 #### Example
 
@@ -170,20 +271,28 @@ TYPE WHERE
 $ cat << EOF > ~/.multihome/transfer
 H notes.txt          # Hardlink to /home/example/notes.txt
 L .Xauthority        # Symlink to /home/example/.Xauthority file
-L .vim               # Symlink to /home/example/.vim directory
-T .vimrc             # Copy /home/example/.vim directory
+L .vimrc             # Symlink to /home/example/.vimrc file
+T .vim/              # Copy /home/example/.vim directory
 ```
 
 Transferring directories requires a trailing slash:
 
 ```
-# T my_data          # incorrect -> /home/example/home_local/my_data/my_data/
-T my_data/           # correct -> /home/example/home_local/mydata/
+# T my_data          # result (bad): /home/example/home_local/my_data/my_data/
+T my_data/           # result:       /home/example/home_local/mydata/
 ```
 
 ### Synchronizing data
 
 Passing the `-u` (`--update`) option copies files from `/etc/skel`, `~/.multihome/skel`, and processes any directives present in the `~/.multihome/transfer` configuration. The destination file(s) will be replaced if the source file (`/home/example/file`) is newer than the destination file (`/home/example/home_local/file`).
+
+```
+$ multihome -u
+Pulling account skeleton: /etc/skel/
+Pulling user-defined account skeleton: /home/example/.multihome/skel/
+Parsing transfer configuration: /home/example/.multihome/transfer
+```
+
 
 ## Known issues / FAQ
 
