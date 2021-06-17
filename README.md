@@ -166,7 +166,7 @@ if ( -f "$HOME/.multihome/init.csh" ) then
     endif
 
     # Initialize managed home directory's shell profile
-    if ( -f "$HOME/.cshrc" )
+    if ( -f "$HOME/.cshrc" ) then
       source $HOME/.cshrc
     endif
 fi
