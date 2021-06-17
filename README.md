@@ -153,7 +153,7 @@ fi
 
 ### [T]CSH
 
-**/home/example/.cshrc**
+**/home/example/.cshrc:**
 
 ```tcsh
 if ( -f "$HOME/.multihome/init.csh" ) then
