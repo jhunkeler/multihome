@@ -819,7 +819,7 @@ int main(int argc, char *argv[]) {
 
     // Generate a blank host group configuration
     if (access(multihome.config_host_group, F_OK) < 0) {
-        fprintf(stderr, "Creating new host group configuration: %s\n", multihome.config_host_group);
+        fprintf(stderr, "Creating host group configuration: %s\n", multihome.config_host_group);
         if (touch(multihome.config_host_group) < 0) {
             perror(multihome.config_host_group);
             return errno;
@@ -879,7 +879,7 @@ int main(int argc, char *argv[]) {
 
     // Generate a blank transfer configuration
     if (access(multihome.config_transfer, F_OK) < 0) {
-        fprintf(stderr, "Creating new transfer configuration: %s\n", multihome.config_transfer);
+        fprintf(stderr, "Creating transfer configuration: %s\n", multihome.config_transfer);
         if (touch(multihome.config_transfer) < 0) {
             perror(multihome.config_transfer);
             return errno;
@@ -897,7 +897,6 @@ int main(int argc, char *argv[]) {
         copy(multihome.config_skeleton, multihome.path_new, copy_mode);
 
         // Transfer or link user-defined files into the new home
-        fprintf(stderr, "Parsing transfer configuration: %s\n", multihome.config_transfer);
         user_transfer(copy_mode);
     }
 
