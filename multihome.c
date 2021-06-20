@@ -734,6 +734,7 @@ int main(int argc, char *argv[]) {
     uid_t uid;
     struct passwd *user_info;
     struct utsname host_info;
+    char *nodename;
 
     // Disable line buffering via macro
     DISABLE_BUFFERING
@@ -778,6 +779,15 @@ int main(int argc, char *argv[]) {
         return errno;
     }
 
+    // The short hostname is used to establish the name for the new home directory
+    // Allocate enough space to fit a long user-defined name, just in case
+    nodename = calloc(PATH_MAX, sizeof(char));
+    if (!nodename) {
+        perror("nodename calloc");
+        return 1;
+    }
+    strcpy(nodename, strip_domainname(host_info.nodename));
+
     // Determine the user's home directory
     char *path_old;
     if (!arguments.update) {
@@ -808,6 +818,14 @@ int main(int argc, char *argv[]) {
     sprintf(multihome.config_skeleton, "%s/%s", multihome.config_dir, MULTIHOME_CFG_SKEL);
     sprintf(multihome.config_host_group, "%s/%s", multihome.config_dir, MULTIHOME_CFG_HOST_GROUP);
 
+    // Refuse to operate within a controlled home directory
+    char already_inside[PATH_MAX];
+    sprintf(already_inside, "%s/%s", multihome.path_old, MULTIHOME_MARKER);
+    if (arguments.update == 0 && access(already_inside, F_OK) == 0) {
+        fprintf(stderr, "error: multihome cannot be nested.\n");
+        return 1;
+    }
+
     // Generate configuration directory
     if (access(multihome.config_dir, F_OK) < 0) {
         fprintf(stderr, "Creating configuration directory: %s\n", multihome.config_dir);
@@ -826,26 +844,15 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // The short hostname is used to establish the name for the new home directory
-    char *nodename;
-    nodename = strip_domainname(host_info.nodename);
-
     // When this host belongs to a host group, modify the hostname once more
     user_host_group(&nodename);
-
     sprintf(multihome.path_new, "%s/%s/%s", multihome.path_old, multihome.path_root, nodename);
+    free(nodename);
+
     sprintf(multihome.path_topdir, "%s/%s", multihome.path_new, MULTIHOME_TOPDIR);
     sprintf(multihome.marker, "%s/%s", multihome.path_new, MULTIHOME_MARKER);
 
     copy_mode = arguments.update; // 0 = normal copy, 1 = update files
-
-    // Refuse to operate within a controlled home directory
-    char already_inside[PATH_MAX];
-    sprintf(already_inside, "%s/%s", multihome.path_old, MULTIHOME_MARKER);
-    if (arguments.update == 0 && access(already_inside, F_OK) == 0) {
-        fprintf(stderr, "error: multihome cannot be nested.\n");
-        return 1;
-    }
 
     // Create new home directory
     if (strcmp(multihome.path_new, multihome.path_old) != 0) {
