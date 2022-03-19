@@ -60,11 +60,11 @@ Under multihome's scheme the NFS shared home directory houses a `HOME` unique to
      |
      |
      |    GROUP           ======================================
-     \-(clusterA[0-9]+)-- + /home/example/home_local/clusterA +
+     \-(clusterA[0-9]+)-- + /home/example/home_local/clusterA1 +
      |                    ======================================
      |
      |    GROUP           ======================================
-     \-(clusterB[0-9]+)-- + /home/example/home_local/clusterB +
+     \-(clusterB[0-9]+)-- + /home/example/home_local/clusterB1 +
                           ======================================
 ```
 
